@@ -1,0 +1,63 @@
+2026-03-21 13:35:14 | INFO     | src.infrastructure.logging_config:setup_logging:82 - Logging to file: /home/johnpenguim/Desktop/swahili-nlp-rag-v2.1-FINAL/data/logs/app.log
+2026-03-21 13:35:14 | INFO     | src.infrastructure.logging_config:setup_logging:84 - Logging initialized at INFO level
+2026-03-21 13:35:14 | INFO     | __main__:main:149 - ============================================================
+2026-03-21 13:35:14 | INFO     | __main__:main:150 - Masakhane POS Data Ingestion
+2026-03-21 13:35:14 | INFO     | __main__:main:151 - ============================================================
+2026-03-21 13:35:14 | INFO     | __main__:main:154 - Initializing database...
+2026-03-21 13:36:41 | INFO     | src.infrastructure.logging_config:setup_logging:82 - Logging to file: /home/johnpenguim/Desktop/swahili-nlp-rag-v2.1-FINAL/data/logs/app.log
+2026-03-21 13:36:41 | INFO     | src.infrastructure.logging_config:setup_logging:84 - Logging initialized at INFO level
+2026-03-21 13:36:41 | INFO     | __main__:main:149 - ============================================================
+2026-03-21 13:36:41 | INFO     | __main__:main:150 - Masakhane POS Data Ingestion
+2026-03-21 13:36:41 | INFO     | __main__:main:151 - ============================================================
+2026-03-21 13:36:41 | INFO     | __main__:main:154 - Initializing database...
+2026-03-21 13:49:20 | INFO     | src.infrastructure.logging_config:setup_logging:82 - Logging to file: /home/johnpenguim/Desktop/swahili-nlp-rag-v2.1-FINAL/data/logs/app.log
+2026-03-21 13:49:20 | INFO     | src.infrastructure.logging_config:setup_logging:84 - Logging initialized at INFO level
+2026-03-21 13:49:20 | INFO     | __main__:main:149 - ============================================================
+2026-03-21 13:49:20 | INFO     | __main__:main:150 - Masakhane POS Data Ingestion
+2026-03-21 13:49:20 | INFO     | __main__:main:151 - ============================================================
+2026-03-21 13:49:20 | INFO     | __main__:main:154 - Initializing database...
+2026-03-21 13:49:20 | INFO     | src.infrastructure.database.connection:init_db:55 - Database schema initialized
+2026-03-21 13:49:20 | INFO     | __main__:ingest_pos_data:57 - Starting ingestion from /home/johnpenguim/Desktop/swahili-nlp-rag-v2.1-FINAL/data/raw/masakhane-pos/pos_swa_test.txt
+2026-03-21 13:49:31 | SUCCESS  | __main__:ingest_pos_data:131 - Ingestion complete: {'sentences': 553, 'new_terms': 3427, 'existing_terms': 12647, 'pos_records': 0, 'errors': 0}
+2026-03-21 13:49:31 | INFO     | __main__:main:161 - ============================================================
+2026-03-21 13:49:31 | INFO     | __main__:main:162 - Process complete!
+2026-03-21 13:49:31 | INFO     | __main__:main:163 - ============================================================
+2026-03-21 14:01:22 | INFO     | src.infrastructure.logging_config:setup_logging:82 - Logging to file: /home/johnpenguim/Desktop/swahili-nlp-rag-v2.1-FINAL/data/logs/app.log
+2026-03-21 14:01:22 | INFO     | src.infrastructure.logging_config:setup_logging:84 - Logging initialized at INFO level
+2026-03-21 14:01:22 | INFO     | __main__:main:116 - ============================================================
+2026-03-21 14:01:22 | INFO     | __main__:main:117 - Masakhane NER Data Ingestion
+2026-03-21 14:01:22 | INFO     | __main__:main:118 - ============================================================
+2026-03-21 14:01:22 | INFO     | src.infrastructure.database.connection:init_db:55 - Database schema initialized
+2026-03-21 14:01:22 | INFO     | __main__:ingest_ner_data:35 - Starting NER ingestion from /home/johnpenguim/Desktop/swahili-nlp-rag-v2.1-FINAL/data/raw/masakhane-ner/ner_swa_test.txt
+2026-03-21 14:01:25 | SUCCESS  | __main__:ingest_ner_data:99 - NER ingestion complete: {'entities_mapped': 0, 'skipped': 13648, 'errors': 0}
+2026-03-21 14:01:25 | INFO     | __main__:main:125 - ============================================================
+2026-03-21 14:01:25 | INFO     | __main__:main:126 - Process complete!
+2026-03-21 14:01:25 | INFO     | __main__:main:127 - ============================================================
+2026-03-21 14:01:31 | INFO     | src.infrastructure.logging_config:setup_logging:82 - Logging to file: /home/johnpenguim/Desktop/swahili-nlp-rag-v2.1-FINAL/data/logs/app.log
+2026-03-21 14:01:31 | INFO     | src.infrastructure.logging_config:setup_logging:84 - Logging initialized at INFO level
+2026-03-21 14:01:31 | INFO     | __main__:main:93 - ============================================================
+2026-03-21 14:01:31 | INFO     | __main__:main:94 - Masakhane News Data Ingestion
+2026-03-21 14:01:31 | INFO     | __main__:main:95 - ============================================================
+2026-03-21 14:01:31 | INFO     | src.infrastructure.database.connection:init_db:55 - Database schema initialized
+2026-03-21 14:01:31 | INFO     | __main__:ingest_news_data:34 - Starting news ingestion from /home/johnpenguim/Desktop/swahili-nlp-rag-v2.1-FINAL/data/raw/masakhane-news/news_swa_test.tsv
+2026-03-21 14:01:31 | INFO     | __main__:ingest_news_data:52 - Loaded 476 articles
+2026-03-21 14:01:31 | SUCCESS  | __main__:ingest_news_data:76 - News ingestion complete: {'ingested': 476, 'errors': 0}
+2026-03-21 14:01:31 | INFO     | __main__:main:102 - ============================================================
+2026-03-21 14:01:31 | INFO     | __main__:main:103 - Process complete!
+2026-03-21 14:01:31 | INFO     | __main__:main:104 - ============================================================
+2026-03-21 14:01:36 | INFO     | src.infrastructure.logging_config:setup_logging:82 - Logging to file: /home/johnpenguim/Desktop/swahili-nlp-rag-v2.1-FINAL/data/logs/app.log
+2026-03-21 14:01:36 | INFO     | src.infrastructure.logging_config:setup_logging:84 - Logging initialized at INFO level
+2026-03-21 14:01:36 | INFO     | __main__:main:112 - ============================================================
+2026-03-21 14:01:36 | INFO     | __main__:main:113 - Kamusi Dictionary Ingestion
+2026-03-21 14:01:36 | INFO     | __main__:main:114 - ============================================================
+2026-03-21 14:01:36 | INFO     | __main__:main:117 - Initializing database...
+2026-03-21 14:01:36 | INFO     | src.infrastructure.database.connection:init_db:55 - Database schema initialized
+2026-03-21 14:01:36 | INFO     | __main__:main:127 - No format specified, trying CSV first...
+2026-03-21 14:01:36 | INFO     | __main__:ingest_kamusi_csv:39 - Ingesting from CSV: /home/johnpenguim/Desktop/swahili-nlp-rag-v2.1-FINAL/data/raw/kamusi/words.csv
+2026-03-21 14:01:36 | INFO     | src.application.use_cases.ingest_kamusi:execute_csv:70 - Starting Kamusi CSV ingestion from /home/johnpenguim/Desktop/swahili-nlp-rag-v2.1-FINAL/data/raw/kamusi/words.csv
+2026-03-21 14:02:15 | SUCCESS  | src.application.use_cases.ingest_kamusi:execute_csv:151 - Kamusi CSV ingestion complete: {'total_rows': 16641, 'new_terms': 0, 'existing_terms': 0, 'dictionary_entries': 13656, 'errors': 2783}
+2026-03-21 14:02:15 | SUCCESS  | __main__:ingest_kamusi_csv:46 - CSV ingestion complete!
+2026-03-21 14:02:15 | INFO     | __main__:ingest_kamusi_csv:47 - Statistics: {'total_rows': 16641, 'new_terms': 0, 'existing_terms': 0, 'dictionary_entries': 13656, 'errors': 2783}
+2026-03-21 14:02:15 | INFO     | __main__:main:134 - ============================================================
+2026-03-21 14:02:15 | INFO     | __main__:main:135 - Process complete!
+2026-03-21 14:02:15 | INFO     | __main__:main:136 - ============================================================
