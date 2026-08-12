@@ -112,3 +112,12 @@
 ### Blocked
 
 - None.
+## 2026-08-12 — Russell linguistic reference harness
+
+- Verified baseline: 129 collected, 128 passed, 1 optional network test skipped;
+  65% branch-aware coverage.
+- Located the private 333-page Russell (1996) PDF and ignored local PDF references.
+- Indexed 21 derived linguistic rules without copying source passages.
+- Separated noun-class membership from typed agreement paradigms and animate concord.
+- Added negative present/past/future parsing and a retained-`ku` monosyllabic regression.
+- Added 14 curated synthetic cases, including a habitual-`hu` adversarial regression.
