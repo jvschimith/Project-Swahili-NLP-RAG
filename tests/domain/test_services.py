@@ -105,7 +105,10 @@ class TestRootExtractorService:
     def test_extract_word_with_prefix(self):
         """Test extracting root with prefix."""
         root = RootExtractorService.extract("wasoma", WordType.VERB)
-        assert root.root == "soma"
+        # The analyzer exposes a consonantal stem/root plus the final vowel,
+        # matching the frozen morphology contract (som + a).
+        assert root.root == "som"
+        assert root.suffix == "a"
         assert root.prefix == "wa"
     
     def test_extract_word_with_prefix_and_suffix(self):
@@ -153,9 +156,9 @@ class TestRootExtractorService:
         assert RootExtractorService.is_likely_compound("kitabu") is False
     
     def test_empty_word(self):
-        """Test handling empty word."""
-        root = RootExtractorService.extract("")
-        assert root.root == ""
+        """Empty input cannot produce a valid morphological root."""
+        with pytest.raises(ValueError, match="Word cannot be empty"):
+            RootExtractorService.extract("")
     
     def test_short_word(self):
         """Test handling very short word."""

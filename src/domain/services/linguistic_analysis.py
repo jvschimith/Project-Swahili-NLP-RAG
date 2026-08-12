@@ -78,10 +78,18 @@ class LinguisticAnalysisService:
         Infer a conservative lexical type from existing morphology clues.
 
         Preference:
-        1. Known Bantu noun-class evidence
-        2. Verb morphology evidence
-        3. Safe fallback to UNKNOWN
+        1. Strong conjugated-verb evidence (subject plus tense/aspect)
+        2. Known Bantu noun-class evidence
+        3. Weaker verb morphology evidence
+        4. Safe fallback to UNKNOWN
+
+        Checking a noun-class prefix first misclassifies forms such as
+        ``ninasoma`` as class 9/10 nouns merely because they begin with ``n``.
         """
+        verb_components = self.root_service.extract_verb_components(normalized_word)
+        if verb_components.subject_marker and verb_components.tense_marker:
+            return WordType.VERB
+
         inferred_noun_class = self.bantu_service.infer_class(normalized_word, WordType.NOUN)
         if inferred_noun_class.is_identified:
             return WordType.NOUN

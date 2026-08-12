@@ -4,8 +4,6 @@ Smoke-test fixtures for alpha API validation.
 from typing import List, Optional
 
 import pytest
-from fastapi.testclient import TestClient
-
 from src.domain.entities import DictionaryEntry, NewsArticle, SwahiliTerm
 from src.domain.value_objects import BantuClass, Etymology, MorphologicalRoot, WordType
 from src.web.api import (
@@ -14,6 +12,7 @@ from src.web.api import (
     get_news_repository,
     get_term_repository,
 )
+from tests.asgi_client import ASGITestClient
 
 
 class FakeTermRepository:
@@ -98,14 +97,23 @@ def fake_news_repo() -> FakeNewsRepository:
 
 
 @pytest.fixture
-def client(fake_term_repo, fake_dictionary_repo, fake_news_repo) -> TestClient:
+def client(fake_term_repo, fake_dictionary_repo, fake_news_repo) -> ASGITestClient:
     """Create a TestClient with repository overrides for smoke tests."""
 
-    app.dependency_overrides[get_term_repository] = lambda: fake_term_repo
-    app.dependency_overrides[get_dictionary_repository] = lambda: fake_dictionary_repo
-    app.dependency_overrides[get_news_repository] = lambda: fake_news_repo
+    async def term_override():
+        return fake_term_repo
 
-    with TestClient(app) as test_client:
+    async def dictionary_override():
+        return fake_dictionary_repo
+
+    async def news_override():
+        return fake_news_repo
+
+    app.dependency_overrides[get_term_repository] = term_override
+    app.dependency_overrides[get_dictionary_repository] = dictionary_override
+    app.dependency_overrides[get_news_repository] = news_override
+
+    with ASGITestClient(app) as test_client:
         yield test_client
 
     app.dependency_overrides.clear()

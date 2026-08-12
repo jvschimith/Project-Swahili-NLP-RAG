@@ -3,9 +3,13 @@ Application Layer - URL News Analyzer
 
 Fetch and analyze news from URLs.
 """
+import ipaddress
+import socket
+from urllib.parse import urljoin, urlsplit
+from typing import Dict, Optional
+
 import requests
 from bs4 import BeautifulSoup
-from typing import Dict, Optional
 from loguru import logger
 
 from src.application.services.text_processor import SwahiliTextProcessor
@@ -29,12 +33,49 @@ class URLNewsAnalyzer:
         >>> result = analyzer.analyze_url("https://example.com/news")
     """
     
+    MAX_REDIRECTS = 5
+    MAX_RESPONSE_BYTES = 5 * 1024 * 1024
+    ALLOWED_CONTENT_TYPES = ("text/html", "application/xhtml+xml")
+
     def __init__(self):
         """Initialize analyzer with text processor."""
         self.processor = SwahiliTextProcessor()
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            "User-Agent": "SwahiliLinguisticIntelligence/2.0 (+local research toolkit)"
         }
+
+    @staticmethod
+    def validate_public_url(url: str) -> str:
+        """Validate an HTTP(S) URL and reject non-public network targets.
+
+        Hostnames are resolved before fetching so loopback, private,
+        link-local, multicast, reserved, and unspecified destinations are
+        refused. Redirect targets are validated separately by ``fetch_url``.
+        """
+        parsed = urlsplit(url)
+        if parsed.scheme.lower() not in {"http", "https"}:
+            raise ValueError("Only http and https URLs are supported")
+        if not parsed.hostname:
+            raise ValueError("URL must include a hostname")
+        if parsed.username or parsed.password:
+            raise ValueError("Credentials in URLs are not supported")
+
+        hostname = parsed.hostname.rstrip(".").lower()
+        if hostname == "localhost" or hostname.endswith(".localhost") or hostname.endswith(".local"):
+            raise ValueError("Local network hostnames are not allowed")
+
+        try:
+            addresses = {item[4][0] for item in socket.getaddrinfo(hostname, parsed.port)}
+        except socket.gaierror as exc:
+            raise ValueError("Hostname could not be resolved") from exc
+        if not addresses:
+            raise ValueError("Hostname did not resolve to an address")
+
+        for address in addresses:
+            ip = ipaddress.ip_address(address)
+            if not ip.is_global:
+                raise ValueError("URL resolves to a non-public network address")
+        return url
     
     def fetch_url(self, url: str, timeout: int = 10) -> Optional[str]:
         """
@@ -48,10 +89,34 @@ class URLNewsAnalyzer:
             HTML content or None if failed
         """
         try:
-            response = requests.get(url, headers=self.headers, timeout=timeout)
-            response.raise_for_status()
-            return response.text
-        except Exception as e:
+            current_url = self.validate_public_url(url)
+            for redirect_count in range(self.MAX_REDIRECTS + 1):
+                response = requests.get(
+                    current_url,
+                    headers=self.headers,
+                    timeout=(min(timeout, 5), timeout),
+                    allow_redirects=False,
+                )
+                if response.status_code in {301, 302, 303, 307, 308}:
+                    if redirect_count >= self.MAX_REDIRECTS:
+                        raise ValueError("Too many redirects")
+                    location = response.headers.get("Location")
+                    if not location:
+                        raise ValueError("Redirect response has no Location header")
+                    current_url = self.validate_public_url(urljoin(current_url, location))
+                    continue
+
+                response.raise_for_status()
+                content_type = response.headers.get("Content-Type", "").lower()
+                if not any(kind in content_type for kind in self.ALLOWED_CONTENT_TYPES):
+                    raise ValueError("URL did not return HTML content")
+                content = response.content
+                if len(content) > self.MAX_RESPONSE_BYTES:
+                    raise ValueError("HTML response exceeds the size limit")
+                response.encoding = response.encoding or response.apparent_encoding or "utf-8"
+                return response.text
+            return None
+        except (requests.RequestException, ValueError) as e:
             logger.error(f"Failed to fetch URL {url}: {e}")
             return None
     
@@ -153,7 +218,7 @@ class URLNewsAnalyzer:
             reverse=True
         )[:20]
         
-        # Simple sentiment analysis (placeholder - can be enhanced)
+        # Transparent lexicon-based sentiment baseline.
         sentiment = self._analyze_sentiment(text, word_freq)
         
         # Language statistics
@@ -188,7 +253,9 @@ class URLNewsAnalyzer:
         Returns:
             Sentiment analysis result
         """
-        # Simple sentiment lexicon (can be greatly enhanced)
+        # Small, auditable sentiment lexicon. Context-dependent topic words
+        # (for example ``uchumi`` / economy) must not carry sentiment merely
+        # because they frequently occur in negative-news examples.
         positive_words = {
             'furaha', 'nzuri', 'vizuri', 'mzuri', 'safi', 'bora', 'pongezi',
             'fanaka', 'stahiki', 'amani', 'upendo', 'faida', 'afya',
@@ -197,7 +264,7 @@ class URLNewsAnalyzer:
         
         negative_words = {
             'mbaya', 'vibaya', 'hasara', 'hatari', 'adui', 'vita', 'mauaji',
-            'uhalifu', 'uchumi', 'mgogoro', 'matatizo', 'kasoro', 'ugonjwa',
+            'uhalifu', 'mgogoro', 'matatizo', 'kasoro', 'ugonjwa',
             'kifo', 'msiba', 'huzuni', 'dhiki'
         }
         

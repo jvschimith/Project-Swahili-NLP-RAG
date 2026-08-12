@@ -201,7 +201,7 @@ class Settings(BaseSettings):
     # ==================== APPLICATION ====================
     
     APP_NAME: str = Field(
-        default="Swahili NLP RAG",
+        default="Swahili Linguistic Intelligence API",
         description="Application name"
     )
     

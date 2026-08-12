@@ -38,3 +38,42 @@
 
 - None.
 
+## Checkpoint 2
+
+### Completed
+
+- Established baseline commit `c3f95a5` before implementation changes.
+- Bootstrapped an isolated Python 3.13 environment and measured 106 collected tests / 35% coverage.
+- Resolved all ten focused linguistic/application regressions with explicit code/test classification.
+- Hardened URL fetching against common SSRF targets, unsafe redirects, non-HTML responses, and oversized bodies; added local deterministic tests.
+- Consolidated packaging in `pyproject.toml`, removed placeholder `setup.py`, and split optional dependency groups.
+- Added temporary-SQLite repository tests and fixed per-category aggregation.
+- Replaced deadlocking thread-portal API tests with socket-free HTTPX ASGI transport.
+- Archived competing/historical marketing and root debugging artifacts.
+
+### Findings
+
+- No RAG retrieval/generation chain exists.
+- `src/web/api.py` contains 19 application routes and combines transport, composition, and orchestration concerns.
+- Sentiment is a small lexicon baseline; `uchumi` was incorrectly treated as intrinsically negative and was removed.
+- Existing static extraction is generic paragraph concatenation, not robust article acquisition.
+
+### Tests
+
+- 114 deterministic application/domain/API/integration tests passed after the first P0 changes.
+- Three new SQLite repository tests passed.
+- Formatting, lint, typing, full coverage, import/startup, and dashboard checks remain for final validation.
+
+### Decisions
+
+- Keep the frozen `som` + final-vowel `a` representation and correct the outdated `wasoma` test.
+- Explicitly reject empty morphology input because `MorphologicalRoot` is non-empty by contract.
+- Keep legacy identifiers only where compatibility benefits outweigh renaming risk.
+
+### Next
+
+- Test export/batch behavior, finish documentation alignment, validate full tooling, and commit coherent P0/P1 units.
+
+### Blocked
+
+- System package management lacks root privileges; user-local pip bootstrapping provided a safe workaround.

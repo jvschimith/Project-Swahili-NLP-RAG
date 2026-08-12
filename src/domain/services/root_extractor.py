@@ -12,6 +12,7 @@ from typing import Optional, List, Tuple
 from loguru import logger
 
 from ..linguistic_rules import (
+    AFFIRMATIVE_POLARITY,
     NOMINAL_PREFIXES,
     NOMINAL_SUFFIXES,
     VERBAL_PREFIXES,
@@ -109,9 +110,11 @@ class RootExtractorService:
             MorphologicalRoot(root='tu', prefix='m', suffix=None)
         """
         # Initial validation
-        if not word or len(word) < 2:
+        if not word:
+            raise ValueError("Word cannot be empty")
+        if len(word) < 2:
             logger.debug(f"Word too short: '{word}'")
-            return MorphologicalRoot(root=word if word else "")
+            return MorphologicalRoot(root=word)
         
         # Normalize word
         original = word.lower().strip()
@@ -235,6 +238,10 @@ class RootExtractorService:
             final_vowel=final_vowel,
             suffixes_extensions=[final_vowel] if final_vowel else [],
             full_prefix=full_prefix if full_prefix else None,
+            # A well-formed surface verb without an overt negative marker is
+            # affirmative in this lightweight analysis. Negative morphology
+            # is still inferred centrally by VerbComponents when present.
+            polarity=AFFIRMATIVE_POLARITY if root and final_vowel else None,
         )
     
     @classmethod

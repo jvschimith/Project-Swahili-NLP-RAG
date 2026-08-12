@@ -4,7 +4,6 @@ Integration test for the main Release 1 internal alpha workflow.
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -16,6 +15,7 @@ from src.infrastructure.database.models import Base
 from src.infrastructure.repositories.dictionary_repository import DictionaryRepository
 from src.infrastructure.repositories.term_repository import TermRepository
 from src.web.api import app, get_api_db
+from tests.asgi_client import ASGITestClient
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def alpha_demo_client(tmp_path):
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
 
-    def override_db():
+    async def override_db():
         db = TestingSessionLocal()
         try:
             yield db
@@ -76,7 +76,7 @@ def alpha_demo_client(tmp_path):
     finally:
         session.close()
 
-    with TestClient(app) as client:
+    with ASGITestClient(app) as client:
         yield client
 
     app.dependency_overrides.clear()

@@ -16,7 +16,7 @@ from fastapi import FastAPI, HTTPException, Depends, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any, Generator
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 from src.infrastructure.database import get_session
@@ -34,8 +34,8 @@ from src.application.services.export_formats import DatasetSplitter, ConfidenceS
 
 # Create FastAPI app
 app = FastAPI(
-    title="Swahili NLP RAG API",
-    description="REST API for Swahili Natural Language Processing with internal alpha release metadata",
+    title="Swahili Linguistic Intelligence API",
+    description="Research API for structured Swahili lexical and morphological analysis",
     version="v2.1.1-alpha",
     docs_url="/docs",
     redoc_url="/redoc"
@@ -47,8 +47,8 @@ batch_processor = BatchProcessor(max_workers=3, delay_between_requests=2.0)
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure properly in production
-    allow_credentials=True,
+    allow_origins=["http://localhost:3000", "http://localhost:8080"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -66,8 +66,7 @@ class TermResponse(BaseModel):
     is_stopword: bool
     frequency_score: float
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BantuClassificationRequest(BaseModel):
@@ -122,8 +121,7 @@ class NewsArticleResponse(BaseModel):
     date_published: datetime
     sentiment_label: Optional[str] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TrendDataPoint(BaseModel):
@@ -146,8 +144,8 @@ class DictionaryEntryResponse(BaseModel):
     term: str
     meaning: str
     english_translation: Optional[str] = None
-    synonyms: List[str] = []
-    usage_examples: List[str] = []
+    synonyms: List[str] = Field(default_factory=list)
+    usage_examples: List[str] = Field(default_factory=list)
     usage_context: Optional[str] = None
 
 
@@ -195,17 +193,17 @@ def get_api_db() -> Generator[Session, None, None]:
     finally:
         db.close()
 
-def get_term_repository(db: Session = Depends(get_api_db)) -> TermRepository:
+async def get_term_repository(db: Session = Depends(get_api_db)) -> TermRepository:
     """Dependency for term repository."""
     return TermRepository(db)
 
 
-def get_news_repository(db: Session = Depends(get_api_db)) -> NewsRepository:
+async def get_news_repository(db: Session = Depends(get_api_db)) -> NewsRepository:
     """Dependency for news repository."""
     return NewsRepository(db)
 
 
-def get_dictionary_repository(db: Session = Depends(get_api_db)) -> DictionaryRepository:
+async def get_dictionary_repository(db: Session = Depends(get_api_db)) -> DictionaryRepository:
     """Dependency for dictionary repository."""
     return DictionaryRepository(db)
 
@@ -216,7 +214,7 @@ def get_dictionary_repository(db: Session = Depends(get_api_db)) -> DictionaryRe
 async def root():
     """Root endpoint."""
     return {
-        "message": "Swahili NLP RAG API",
+        "message": "Swahili Linguistic Intelligence API",
         "version": "v2.1.1-alpha",
         "docs": "/docs"
     }
@@ -648,7 +646,7 @@ async def analyze_news_url(request: URLAnalysisRequest):
 
 class BatchAnalysisRequest(BaseModel):
     """Request model for batch analysis."""
-    urls: List[str] = Field(..., min_items=1, max_items=1000, description="List of URLs to analyze")
+    urls: List[str] = Field(..., min_length=1, max_length=1000, description="List of URLs to analyze")
 
 
 class BatchJobResponse(BaseModel):

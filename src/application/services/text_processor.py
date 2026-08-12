@@ -35,7 +35,9 @@ class SwahiliTextProcessor:
         # Articles/Determiners
         'hii', 'hizi', 'hilo', 'hiyo', 'ile', 'wale', 'yule',
         # Prepositions
-        'ya', 'wa', 'la', 'za', 'katika', 'kwa', 'kutoka',
+        # Genitive/associative concords. These are grammatical markers rather
+        # than lexical content when computing keyword-style statistics.
+        'ya', 'wa', 'la', 'cha', 'za', 'katika', 'kwa', 'kutoka',
         # Copula/Auxiliary
         'ni', 'si', 'ndi', 'ndo',
         # Common verbs

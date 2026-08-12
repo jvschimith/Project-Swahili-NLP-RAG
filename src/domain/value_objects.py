@@ -172,7 +172,6 @@ class SentimentScore:
         """Check whether the sentiment is neutral."""
         return -0.1 <= self.polarity <= 0.1
     
-    @property
     def is_confident(self, threshold: float = 0.7) -> bool:
         """Check whether the analysis has high confidence."""
         return self.confidence >= threshold

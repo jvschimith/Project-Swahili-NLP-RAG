@@ -6,7 +6,7 @@ Concrete implementation of INewsRepository interface.
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from loguru import logger
 
 from src.domain.repositories import INewsRepository
@@ -112,12 +112,11 @@ class NewsRepository(INewsRepository):
     
     def count_by_category(self) -> dict:
         """Count articles by category."""
-        results = self.session.query(
-            DBNews.category,
-            self.session.query(DBNews).filter(
-                DBNews.category == DBNews.category
-            ).count()
-        ).group_by(DBNews.category).all()
+        results = (
+            self.session.query(DBNews.category, func.count(DBNews.id))
+            .group_by(DBNews.category)
+            .all()
+        )
         
         return {category: count for category, count in results}
     

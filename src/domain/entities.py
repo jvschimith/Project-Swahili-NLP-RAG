@@ -11,7 +11,7 @@ Characteristics:
 - They are compared by identity (ID), not by value
 - They encapsulate business rules
 """
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 from .value_objects import (
@@ -47,7 +47,7 @@ class WordForm(BaseModel):
     polarity: Optional[str] = None
     verb_components: Optional[VerbComponents] = None
     is_canonical: bool = False
-    register: Optional[str] = None
+    usage_register: Optional[str] = Field(default=None, alias="register", serialization_alias="register")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     @field_validator('lexeme_lemma', 'form')
@@ -249,10 +249,7 @@ class Lexeme(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
 
-    class Config:
-        """Pydantic configuration."""
-        use_enum_values = False
-        validate_assignment = True
+    model_config = ConfigDict(use_enum_values=False, validate_assignment=True)
 
     @field_validator('lemma')
     @classmethod
@@ -391,10 +388,7 @@ class SwahiliTerm(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     
-    class Config:
-        """Pydantic configuration."""
-        use_enum_values = False  # Keep enums as objects
-        validate_assignment = True  # Validate on assignment
+    model_config = ConfigDict(use_enum_values=False, validate_assignment=True)
     
     @field_validator('term')
     @classmethod
@@ -546,9 +540,7 @@ class DictionaryEntry(BaseModel):
     usage_examples: List[str] = Field(default_factory=list)
     usage_context: Optional[str] = None  # formal, informal, slang, technical
     
-    class Config:
-        """Pydantic configuration."""
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     
     def add_synonym(self, synonym: str) -> None:
         """
@@ -767,9 +759,7 @@ class NewsArticle(BaseModel):
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
-    class Config:
-        """Pydantic configuration."""
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     
     def analyze_sentiment(self, score: SentimentScore) -> None:
         """

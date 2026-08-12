@@ -141,7 +141,7 @@ VERBAL_PREFIXES = [
 
 NOMINAL_PREFIXES = [
     "wa", "mi", "ma", "ki", "vi", "ku", "pa", "mu",
-    "mw", "mtu", "mti", "ji", "ny", "n", "u",
+    "mw", "m", "ji", "ny", "n", "u",
 ]
 
 
