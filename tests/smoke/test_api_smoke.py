@@ -1,6 +1,7 @@
 """
 Stable local smoke tests for alpha API readiness.
 """
+
 import pytest
 
 

@@ -2,15 +2,16 @@
 """
 Complete Diagnostic and Fix Script
 """
+
 import os
 import sys
 import requests
 import subprocess
 from pathlib import Path
 
-print("="*60)
+print("=" * 60)
 print("SWAHILI NLP API DIAGNOSTIC")
-print("="*60)
+print("=" * 60)
 
 # Check 1: Are we in the right directory?
 print("\n1️⃣ Checking directory...")
@@ -27,7 +28,7 @@ else:
 
 # Check 2: Does the file have the new endpoint?
 print("\n2️⃣ Checking if api.py has new endpoint...")
-with open(api_file, 'r') as f:
+with open(api_file, "r") as f:
     content = f.read()
     if '@app.post("/news/save"' in content:
         print("✅ File has @app.post('/news/save') endpoint")
@@ -40,6 +41,7 @@ with open(api_file, 'r') as f:
 # Check 3: When was the file last modified?
 print("\n3️⃣ Checking file timestamp...")
 import time
+
 mod_time = os.path.getmtime(api_file)
 mod_date = time.ctime(mod_time)
 age_seconds = time.time() - mod_time
@@ -69,10 +71,12 @@ try:
         "category": "Test",
         "sentiment_polarity": 0.0,
         "sentiment_confidence": 0.5,
-        "sentiment_label": "neutral"
+        "sentiment_label": "neutral",
     }
-    response = requests.post("http://localhost:8000/news/save", json=test_data, timeout=5)
-    
+    response = requests.post(
+        "http://localhost:8000/news/save", json=test_data, timeout=5
+    )
+
     if response.status_code == 200:
         print(f"✅ Endpoint works! Status: {response.status_code}")
         print(f"   Response: {response.json()}")
@@ -90,7 +94,7 @@ try:
     else:
         print(f"⚠️  Unexpected status: {response.status_code}")
         print(f"   Response: {response.text}")
-        
+
 except Exception as e:
     print(f"❌ Request failed: {e}")
 
@@ -100,14 +104,14 @@ try:
     response = requests.get("http://localhost:8000/openapi.json", timeout=2)
     if response.status_code == 200:
         openapi = response.json()
-        paths = openapi.get('paths', {})
-        
+        paths = openapi.get("paths", {})
+
         print("   Available POST endpoints:")
         for path, methods in paths.items():
-            if 'post' in methods:
+            if "post" in methods:
                 print(f"   ✓ POST {path}")
-        
-        if '/news/save' not in paths:
+
+        if "/news/save" not in paths:
             print(f"\n   ❌ /news/save NOT in running API!")
             print(f"      But it IS in your file on disk.")
             print(f"      This confirms: API is running OLD code")
@@ -115,18 +119,24 @@ try:
 except:
     pass
 
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("SUMMARY")
-print("="*60)
+print("=" * 60)
 
 # Final verdict
 file_ok = '@app.post("/news/save"' in content
 try:
-    api_response = requests.post("http://localhost:8000/news/save", 
-                                 json={"content": "test", "category": "test", 
-                                       "sentiment_polarity": 0, "sentiment_confidence": 0.5,
-                                       "sentiment_label": "neutral"}, 
-                                 timeout=2)
+    api_response = requests.post(
+        "http://localhost:8000/news/save",
+        json={
+            "content": "test",
+            "category": "test",
+            "sentiment_polarity": 0,
+            "sentiment_confidence": 0.5,
+            "sentiment_label": "neutral",
+        },
+        timeout=2,
+    )
     api_ok = api_response.status_code == 200
 except:
     api_ok = False
@@ -143,4 +153,4 @@ elif not file_ok:
     print("❌ FILE INCORRECT - Need to replace src/web/api.py")
     print("   Extract from FIX_PACKAGE.zip")
 
-print("="*60)
+print("=" * 60)

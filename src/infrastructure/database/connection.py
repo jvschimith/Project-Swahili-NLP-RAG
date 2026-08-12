@@ -3,15 +3,16 @@ Infrastructure Layer - Database Connection
 
 Database connection management using SQLAlchemy.
 """
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
+
 from loguru import logger
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
-from .models import Base
 from ..config import settings
-
+from .models import Base
 
 # Create engine
 # Add timeout for SQLite to prevent "database is locked" errors
@@ -20,7 +21,11 @@ engine = create_engine(
     echo=settings.DB_ECHO,
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
-    connect_args={"timeout": 30, "check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
+    connect_args=(
+        {"timeout": 30, "check_same_thread": False}
+        if "sqlite" in settings.DATABASE_URL
+        else {}
+    ),
 )
 
 # Create session factory
@@ -42,7 +47,7 @@ def get_session() -> Session:
 def get_db_context() -> Generator[Session, None, None]:
     """
     Context manager for database sessions.
-    
+
     Usage:
         with get_db_context() as db:
             db.query(DBTerm).all()

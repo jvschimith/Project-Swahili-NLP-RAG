@@ -5,7 +5,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.domain.entities import NewsArticle, SwahiliTerm
-from src.domain.value_objects import BantuClass, MorphologicalRoot, SentimentScore, WordType
+from src.domain.value_objects import (
+    BantuClass,
+    MorphologicalRoot,
+    SentimentScore,
+    WordType,
+)
 from src.infrastructure.database.models import Base
 from src.infrastructure.repositories.news_repository import NewsRepository
 from src.infrastructure.repositories.term_repository import TermRepository

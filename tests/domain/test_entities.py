@@ -4,6 +4,7 @@ Unit Tests - Domain Layer: Entities
 Tests for the lexeme-first domain entities introduced during the domain
 refactor while keeping legacy compatibility.
 """
+
 import pytest
 
 from src.domain.entities import (

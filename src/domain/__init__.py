@@ -12,42 +12,32 @@ frameworks or infrastructure details.
 """
 
 # Value Objects
-from .value_objects import (
-    BantuClass,
-    Etymology,
-    WordType,
-    SentimentScore,
-    MorphologicalRoot,
-    VerbComponents,
-    EntityType,
-)
-from .linguistic_rules import (
-    CORE_WORD_TYPE_VALUES,
-    AFFIRMATIVE_POLARITY,
-    NEGATIVE_POLARITY,
-)
-
 # Entities
 from .entities import (
-    Lexeme,
-    WordForm,
-    Meaning,
     Context,
     Derivation,
-    SwahiliTerm,
     DictionaryEntry,
-    VerbConjugation,
-    POSRecord,
+    Lexeme,
+    Meaning,
     NewsArticle,
+    POSRecord,
+    SwahiliTerm,
+    VerbConjugation,
+    WordForm,
+)
+from .linguistic_rules import (
+    AFFIRMATIVE_POLARITY,
+    CORE_WORD_TYPE_VALUES,
+    NEGATIVE_POLARITY,
 )
 
 # Repository Interfaces
 from .repositories import (
-    ITermRepository,
-    IDictionaryRepository,
     IConjugationRepository,
-    IPOSRepository,
+    IDictionaryRepository,
     INewsRepository,
+    IPOSRepository,
+    ITermRepository,
 )
 
 # Domain Services
@@ -57,6 +47,15 @@ from .services.linguistic_analysis import (
     LinguisticAnalysisService,
 )
 from .services.root_extractor import RootExtractorService
+from .value_objects import (
+    BantuClass,
+    EntityType,
+    Etymology,
+    MorphologicalRoot,
+    SentimentScore,
+    VerbComponents,
+    WordType,
+)
 
 __all__ = [
     # Value Objects

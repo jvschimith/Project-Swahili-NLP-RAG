@@ -5,6 +5,7 @@ Seed a minimal deterministic local dataset for Release 1 alpha.
 Usage:
     python scripts/seed_release1_alpha.py
 """
+
 import json
 import sys
 from pathlib import Path
@@ -24,7 +25,6 @@ from src.infrastructure.logging_config import setup_logging
 from src.infrastructure.repositories.dictionary_repository import DictionaryRepository
 from src.infrastructure.repositories.news_repository import NewsRepository
 from src.infrastructure.repositories.term_repository import TermRepository
-
 
 SEED_DIR = Path(__file__).parent.parent / "data" / "seed"
 DICTIONARY_FIXTURE = SEED_DIR / "release1_dictionary.json"
@@ -60,7 +60,15 @@ def _map_etymology(value: str) -> Etymology:
     return mapping.get((value or "").strip().lower(), Etymology.UNKNOWN)
 
 
-def _ensure_term(session, term_repo, root_service, bantu_service, word: str, word_type: WordType, etymology: Etymology) -> int:
+def _ensure_term(
+    session,
+    term_repo,
+    root_service,
+    bantu_service,
+    word: str,
+    word_type: WordType,
+    etymology: Etymology,
+) -> int:
     normalized = word.strip().lower()
     existing_db_term = session.query(DBTerm).filter_by(swahili_term=normalized).first()
     if existing_db_term:
@@ -111,7 +119,12 @@ def seed_dictionary(session, term_repo, dict_repo, root_service, bantu_service):
             usage_examples=item.get("usage_examples", []),
         )
 
-        existing_entry = session.query(DBDictionary).join(DBTerm).filter(DBTerm.swahili_term == word).first()
+        existing_entry = (
+            session.query(DBDictionary)
+            .join(DBTerm)
+            .filter(DBTerm.swahili_term == word)
+            .first()
+        )
         dict_repo.save(entry, term_id)
 
         stats["dictionary_terms"] += 1
@@ -140,12 +153,16 @@ def seed_linguistic_sample(session, term_repo, root_service, bantu_service):
             etymology=Etymology.UNKNOWN,
         )
 
-        existing = session.query(DBPOS).filter_by(
-            term_id=term_id,
-            tag=row["tag"].upper(),
-            sentence_id=row["sentence_id"],
-            word_order=row["word_order"],
-        ).first()
+        existing = (
+            session.query(DBPOS)
+            .filter_by(
+                term_id=term_id,
+                tag=row["tag"].upper(),
+                sentence_id=row["sentence_id"],
+                word_order=row["word_order"],
+            )
+            .first()
+        )
 
         if existing is None:
             session.add(
@@ -169,7 +186,9 @@ def seed_news(session, news_repo):
     stats = {"news_records": 0}
 
     for item in items:
-        existing = session.query(DBNews).filter_by(source_url=item["source_url"]).first()
+        existing = (
+            session.query(DBNews).filter_by(source_url=item["source_url"]).first()
+        )
         if existing is not None:
             continue
 
@@ -209,8 +228,12 @@ def main():
 
     try:
         stats = {}
-        stats.update(seed_dictionary(session, term_repo, dict_repo, root_service, bantu_service))
-        stats.update(seed_linguistic_sample(session, term_repo, root_service, bantu_service))
+        stats.update(
+            seed_dictionary(session, term_repo, dict_repo, root_service, bantu_service)
+        )
+        stats.update(
+            seed_linguistic_sample(session, term_repo, root_service, bantu_service)
+        )
         stats.update(seed_news(session, news_repo))
 
         session.commit()

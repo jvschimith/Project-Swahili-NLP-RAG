@@ -1,6 +1,7 @@
 """
 Unit Tests - Domain Layer: Linguistic Analysis Service
 """
+
 import pytest
 
 from src.domain.services.linguistic_analysis import LinguisticAnalysisService

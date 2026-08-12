@@ -4,13 +4,14 @@ Fix: Database is Locked Error
 
 Enables WAL mode for better concurrent access.
 """
+
 import sqlite3
 import os
 from pathlib import Path
 
-print("="*60)
+print("=" * 60)
 print("Fixing 'database is locked' error")
-print("="*60)
+print("=" * 60)
 
 # Find database
 db_path = Path("data/swahili_knowledge.db")
@@ -48,9 +49,9 @@ print("   ✅ Optimized database")
 
 conn.close()
 
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("✅ Database fixed!")
-print("="*60)
+print("=" * 60)
 print("\nWhat was done:")
 print("1. Enabled WAL mode (Write-Ahead Logging)")
 print("   - Allows concurrent reads/writes")
@@ -61,4 +62,4 @@ print("3. Optimized database")
 print("\nNow restart your API:")
 print("  uvicorn src.web.api:app --reload")
 print("\nThe error should be gone!")
-print("="*60)
+print("=" * 60)

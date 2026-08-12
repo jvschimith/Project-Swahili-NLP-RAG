@@ -1,7 +1,6 @@
 """
 Integration test for the main Release 1 internal alpha workflow.
 """
-from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine

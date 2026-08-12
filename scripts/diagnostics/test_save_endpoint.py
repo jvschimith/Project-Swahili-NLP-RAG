@@ -5,6 +5,7 @@ Quick test: Check if /news/save endpoint is working
 Usage:
     python test_save_endpoint.py
 """
+
 import requests
 import json
 
@@ -17,7 +18,7 @@ test_article = {
     "source_url": "https://example.com/test",
     "sentiment_polarity": 0.5,
     "sentiment_confidence": 0.8,
-    "sentiment_label": "positive"
+    "sentiment_label": "positive",
 }
 
 print("=" * 60)
@@ -26,14 +27,10 @@ print("=" * 60)
 
 try:
     # Test the endpoint
-    response = requests.post(
-        f"{API_URL}/news/save",
-        json=test_article,
-        timeout=10
-    )
-    
+    response = requests.post(f"{API_URL}/news/save", json=test_article, timeout=10)
+
     print(f"\nStatus Code: {response.status_code}")
-    
+
     if response.status_code == 200:
         print("✅ SUCCESS!")
         print(f"\nResponse:")
@@ -47,13 +44,13 @@ try:
     else:
         print(f"❌ Error: {response.status_code}")
         print(f"Response: {response.text}")
-        
+
 except requests.exceptions.ConnectionError:
     print("❌ Cannot connect to API!")
     print("\n🔧 SOLUTION:")
     print("Start the API first:")
     print("uvicorn src.web.api:app --reload")
-    
+
 except Exception as e:
     print(f"❌ Error: {e}")
 

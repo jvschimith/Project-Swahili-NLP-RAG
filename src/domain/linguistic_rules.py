@@ -4,8 +4,8 @@ Stable linguistic rules for the Swahili core domain.
 This module is the source of truth for the frozen linguistic contract
 used by the domain and morphology services.
 """
-from typing import Iterable, Optional
 
+from collections.abc import Iterable
 
 CORE_WORD_TYPE_VALUES = {
     "noun",
@@ -121,33 +121,122 @@ VERB_OBJECT_MARKERS = ["ni", "ku", "mu", "tu", "wa", "m", "ki", "vi"]
 
 
 VERBAL_PREFIXES = [
-    "ninaku", "ninali", "ninata", "ninana", "ninajua",
-    "unaku", "unali", "unata", "unana",
-    "anaku", "anali", "anata", "anana",
-    "tunaku", "tunali", "tunata", "tunana",
-    "mnaku", "mnali", "mnata", "mnana",
-    "wanaku", "wanali", "wanata", "wanana",
-    "nina", "una", "ana", "tuna", "mna", "wana",
-    "nita", "uta", "ata", "tuta", "mta", "wata",
-    "nili", "uli", "ali", "tuli", "mli", "wali",
-    "nime", "ume", "ame", "tume", "mme", "wame",
-    "niku", "uku", "aku", "tuku", "mku", "waku",
-    "nihu", "uhu", "ahu", "tuhu", "mhu", "wahu",
-    "nisi", "usi", "asi", "tusi", "msi", "wasi",
-    "ni", "u", "a", "tu", "m", "wa",
-    "ku", "li", "ta", "na", "me", "ka", "hu", "si",
+    "ninaku",
+    "ninali",
+    "ninata",
+    "ninana",
+    "ninajua",
+    "unaku",
+    "unali",
+    "unata",
+    "unana",
+    "anaku",
+    "anali",
+    "anata",
+    "anana",
+    "tunaku",
+    "tunali",
+    "tunata",
+    "tunana",
+    "mnaku",
+    "mnali",
+    "mnata",
+    "mnana",
+    "wanaku",
+    "wanali",
+    "wanata",
+    "wanana",
+    "nina",
+    "una",
+    "ana",
+    "tuna",
+    "mna",
+    "wana",
+    "nita",
+    "uta",
+    "ata",
+    "tuta",
+    "mta",
+    "wata",
+    "nili",
+    "uli",
+    "ali",
+    "tuli",
+    "mli",
+    "wali",
+    "nime",
+    "ume",
+    "ame",
+    "tume",
+    "mme",
+    "wame",
+    "niku",
+    "uku",
+    "aku",
+    "tuku",
+    "mku",
+    "waku",
+    "nihu",
+    "uhu",
+    "ahu",
+    "tuhu",
+    "mhu",
+    "wahu",
+    "nisi",
+    "usi",
+    "asi",
+    "tusi",
+    "msi",
+    "wasi",
+    "ni",
+    "u",
+    "a",
+    "tu",
+    "m",
+    "wa",
+    "ku",
+    "li",
+    "ta",
+    "na",
+    "me",
+    "ka",
+    "hu",
+    "si",
 ]
 
 
 NOMINAL_PREFIXES = [
-    "wa", "mi", "ma", "ki", "vi", "ku", "pa", "mu",
-    "mw", "m", "ji", "ny", "n", "u",
+    "wa",
+    "mi",
+    "ma",
+    "ki",
+    "vi",
+    "ku",
+    "pa",
+    "mu",
+    "mw",
+    "m",
+    "ji",
+    "ny",
+    "n",
+    "u",
 ]
 
 
 VERBAL_SUFFIXES = [
-    "wa", "ni", "ye", "e", "a", "i", "o", "u",
-    "ka", "sha", "po", "ko", "mo",
+    "wa",
+    "ni",
+    "ye",
+    "e",
+    "a",
+    "i",
+    "o",
+    "u",
+    "ka",
+    "sha",
+    "po",
+    "ko",
+    "mo",
 ]
 
 
@@ -173,7 +262,7 @@ def get_noun_class_examples(class_value: str) -> list:
     return NOUN_CLASS_EXAMPLES.get(class_value, [])
 
 
-def infer_verb_polarity(tense_marker: Optional[str]) -> Optional[str]:
+def infer_verb_polarity(tense_marker: str | None) -> str | None:
     """Infer polarity when verbal morphology exposes it."""
     if tense_marker is None:
         return None
@@ -183,8 +272,8 @@ def infer_verb_polarity(tense_marker: Optional[str]) -> Optional[str]:
 
 
 def infer_canonical_verb_lemma(
-    root: Optional[str],
-    final_vowel: Optional[str],
+    root: str | None,
+    final_vowel: str | None,
     fallback: str,
 ) -> str:
     """Infer a conservative infinitive-style canonical verb lemma."""
@@ -200,7 +289,7 @@ def infer_nominal_lemma(word: str) -> str:
     return normalize_linguistic_text(word)
 
 
-def normalize_suffixes(values: Optional[Iterable[str]]) -> list[str]:
+def normalize_suffixes(values: Iterable[str] | None) -> list[str]:
     """Normalize suffix/extension material while preserving order."""
     normalized = []
     for value in values or []:
@@ -213,10 +302,10 @@ def normalize_suffixes(values: Optional[Iterable[str]]) -> list[str]:
 
 def looks_like_verb_form(
     normalized_word: str,
-    subject_marker: Optional[str],
-    tense_marker: Optional[str],
-    object_marker: Optional[str],
-    final_vowel: Optional[str],
+    subject_marker: str | None,
+    tense_marker: str | None,
+    object_marker: str | None,
+    final_vowel: str | None,
 ) -> bool:
     """Centralized heuristic for current verb-form detection."""
     if any([subject_marker, tense_marker, object_marker, final_vowel]):

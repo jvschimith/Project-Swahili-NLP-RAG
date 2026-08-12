@@ -15,7 +15,7 @@ This is a pure Domain Service:
 - Testable in isolation
 - Complex domain logic
 """
-from typing import Dict, Tuple, Optional
+
 from loguru import logger
 
 from ..linguistic_rules import (
@@ -48,7 +48,7 @@ class BantuClassifierService:
         - Prefixes may vary between singular and plural
         - Some words can belong to multiple classes (polysemy)
         - Loanwords from other languages often default to class 9/10
-    
+
     Examples:
         >>> classifier = BantuClassifierService()
         >>> classifier.infer_class("mtu", WordType.NOUN)
@@ -58,20 +58,20 @@ class BantuClassifierService:
         >>> classifier.infer_class("soma", WordType.VERB)
         BantuClass.UNKNOWN
     """
-    
+
     # Mapping from prefixes to classes
     # Format: {(singular_prefixes, plural_prefixes): BantuClass}
-    PREFIX_TO_CLASS: Dict[Tuple[str, ...], BantuClass] = {
+    PREFIX_TO_CLASS: dict[tuple[str, ...], BantuClass] = {
         prefixes: BantuClass(class_value)
         for prefixes, class_value in NOUN_CLASS_PREFIX_RULES.items()
     }
-    
+
     # Special cases (words that do not follow regular patterns)
-    SPECIAL_CASES: Dict[str, BantuClass] = {
+    SPECIAL_CASES: dict[str, BantuClass] = {
         word: BantuClass(class_value)
         for word, class_value in NOUN_CLASS_SPECIAL_CASES.items()
     }
-    
+
     @classmethod
     def infer_class(cls, word: str, word_type: WordType = WordType.NOUN) -> BantuClass:
         """
@@ -82,14 +82,14 @@ class BantuClassifierService:
             - Check special cases first
             - Use prefix matching for general cases
             - Return UNKNOWN if classification fails
-        
+
         Args:
             word: Swahili word (normalized)
             word_type: Grammatical type of the word
-            
+
         Returns:
             Inferred BantuClass
-            
+
         Examples:
             >>> BantuClassifierService.infer_class("mtu", WordType.NOUN)
             BantuClass.M_WA
@@ -103,16 +103,16 @@ class BantuClassifierService:
                 f"Skipping Bantu class inference."
             )
             return BantuClass.UNKNOWN
-        
+
         # Normalize word
         word_lower = word.lower().strip()
-        
+
         # Rule 2: Check special cases first
         if word_lower in cls.SPECIAL_CASES:
             result = cls.SPECIAL_CASES[word_lower]
             logger.debug(f"Found special case: '{word}' → {result.value}")
             return result
-        
+
         # Rule 3: Try prefix matching
         for prefixes, bantu_class in cls.PREFIX_TO_CLASS.items():
             for prefix in prefixes:
@@ -124,61 +124,61 @@ class BantuClassifierService:
                             f"via prefix '{prefix}'"
                         )
                         return bantu_class
-        
+
         # Rule 4: If classification failed
         logger.debug(f"Could not infer Bantu class for '{word}'")
         return BantuClass.UNKNOWN
-    
+
     @classmethod
     def get_class_description(cls, bantu_class: BantuClass) -> str:
         """
         Return a detailed semantic description of the Bantu class.
-        
+
         Args:
             bantu_class: Bantu class
-            
+
         Returns:
             English description
-            
+
         Examples:
             >>> desc = BantuClassifierService.get_class_description(BantuClass.M_WA)
             >>> "Pessoas" in desc
             True
         """
         return bantu_class.description
-    
+
     @classmethod
     def get_typical_examples(cls, bantu_class: BantuClass) -> list:
         """
         Return typical word examples for the class.
-        
+
         Args:
             bantu_class: Bantu class
-            
+
         Returns:
             List of examples (singular/plural)
-            
+
         Examples:
             >>> examples = BantuClassifierService.get_typical_examples(BantuClass.M_WA)
             >>> ("mtu", "watu") in examples
             True
         """
         return NOUN_CLASS_EXAMPLES.get(bantu_class.value, [])
-    
+
     @classmethod
     def validate_class_for_word(cls, word: str, claimed_class: BantuClass) -> bool:
         """
         Validate whether a Bantu class is consistent with a word.
 
         Useful for validating external dictionary data.
-        
+
         Args:
             word: Swahili word
             claimed_class: Claimed class
-            
+
         Returns:
             True if consistent, False otherwise
-            
+
         Examples:
             >>> BantuClassifierService.validate_class_for_word("mtu", BantuClass.M_WA)
             True
@@ -186,30 +186,30 @@ class BantuClassifierService:
             False
         """
         inferred = cls.infer_class(word, WordType.NOUN)
-        
+
         # If we cannot infer it, we cannot validate it
         if inferred == BantuClass.UNKNOWN:
             logger.warning(
                 f"Cannot validate class for '{word}': inference returned UNKNOWN"
             )
             return True  # Assume valid if inference is unavailable
-        
+
         # Compare against the claimed class
         is_valid = inferred == claimed_class
-        
+
         if not is_valid:
             logger.warning(
                 f"Class mismatch for '{word}': "
                 f"claimed {claimed_class.value}, inferred {inferred.value}"
             )
-        
+
         return is_valid
-    
+
     @classmethod
     def get_all_classes(cls) -> list:
         """
         Return a list of all available Bantu classes.
-        
+
         Returns:
             List of BantuClass values
         """
@@ -227,7 +227,7 @@ class BantuClassifierService:
 # Usage example (for tests/documentation)
 if __name__ == "__main__":
     print("=== Bantu Classifier Service ===\n")
-    
+
     # Test classification
     test_words = [
         ("mtu", WordType.NOUN),
@@ -237,12 +237,12 @@ if __name__ == "__main__":
         ("uzuri", WordType.NOUN),
         ("soma", WordType.VERB),
     ]
-    
+
     print("Classifying words:\n")
     for word, wtype in test_words:
         cls = BantuClassifierService.infer_class(word, wtype)
         print(f"{word:15} ({wtype.value:10}) → {cls.value:10} - {cls.description}")
-    
+
     # Show examples
     print("\n\nExamples by class:\n")
     for bantu_class in BantuClassifierService.get_all_classes():
@@ -253,7 +253,7 @@ if __name__ == "__main__":
                 print(f"  {ex[0]:15} / {ex[1]:15} ({ex[2]})")
             else:
                 print(f"  {ex[0]:15} ({ex[2]})")
-    
+
     # Test validation
     print("\n\nClass validation:\n")
     validations = [
@@ -261,7 +261,7 @@ if __name__ == "__main__":
         ("mtu", BantuClass.KI_VI, False),
         ("kiti", BantuClass.KI_VI, True),
     ]
-    
+
     for word, cls, expected in validations:
         result = BantuClassifierService.validate_class_for_word(word, cls)
         status = "✓" if result == expected else "✗"

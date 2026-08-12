@@ -11,19 +11,21 @@ Characteristics:
 - They are compared by identity (ID), not by value
 - They encapsulate business rules
 """
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Optional, List
+
 from datetime import datetime
-from .value_objects import (
-    BantuClass, 
-    Etymology, 
-    WordType, 
-    SentimentScore, 
-    MorphologicalRoot,
-    EntityType,
-    VerbComponents,
-)
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 from .linguistic_rules import normalize_linguistic_text, normalize_suffixes
+from .value_objects import (
+    BantuClass,
+    EntityType,
+    Etymology,
+    MorphologicalRoot,
+    SentimentScore,
+    VerbComponents,
+    WordType,
+)
 
 
 class WordForm(BaseModel):
@@ -34,46 +36,49 @@ class WordForm(BaseModel):
     lexeme, including lightweight structural metadata needed during the
     domain migration.
     """
+
     lexeme_lemma: str = Field(..., min_length=1, max_length=100)
     form: str = Field(..., min_length=1, max_length=100)
-    root: Optional[MorphologicalRoot] = None
+    root: MorphologicalRoot | None = None
     word_type: WordType = WordType.UNKNOWN
-    grammatical_features: List[str] = Field(default_factory=list)
-    subject_marker: Optional[str] = None
-    tense_marker: Optional[str] = None
-    object_marker: Optional[str] = None
-    suffixes_extensions: List[str] = Field(default_factory=list)
-    final_vowel: Optional[str] = None
-    polarity: Optional[str] = None
-    verb_components: Optional[VerbComponents] = None
+    grammatical_features: list[str] = Field(default_factory=list)
+    subject_marker: str | None = None
+    tense_marker: str | None = None
+    object_marker: str | None = None
+    suffixes_extensions: list[str] = Field(default_factory=list)
+    final_vowel: str | None = None
+    polarity: str | None = None
+    verb_components: VerbComponents | None = None
     is_canonical: bool = False
-    usage_register: Optional[str] = Field(default=None, alias="register", serialization_alias="register")
+    usage_register: str | None = Field(
+        default=None, alias="register", serialization_alias="register"
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    @field_validator('lexeme_lemma', 'form')
+    @field_validator("lexeme_lemma", "form")
     @classmethod
     def normalize_text(cls, v: str) -> str:
         """Normalize lemma/form strings for lexical matching."""
         return normalize_linguistic_text(v)
 
-    @field_validator('subject_marker', 'tense_marker', 'object_marker')
+    @field_validator("subject_marker", "tense_marker", "object_marker")
     @classmethod
-    def normalize_markers(cls, v: Optional[str]) -> Optional[str]:
+    def normalize_markers(cls, v: str | None) -> str | None:
         """Normalize optional verbal markers."""
         if v is None:
             return None
         normalized = normalize_linguistic_text(v)
         return normalized or None
 
-    @field_validator('suffixes_extensions')
+    @field_validator("suffixes_extensions")
     @classmethod
-    def normalize_suffixes(cls, values: List[str]) -> List[str]:
+    def normalize_suffixes(cls, values: list[str]) -> list[str]:
         """Normalize derivational/final suffix material."""
         return normalize_suffixes(values)
 
-    @field_validator('final_vowel', 'polarity')
+    @field_validator("final_vowel", "polarity")
     @classmethod
-    def normalize_optional_fields(cls, v: Optional[str]) -> Optional[str]:
+    def normalize_optional_fields(cls, v: str | None) -> str | None:
         """Normalize optional morphology fields."""
         if v is None:
             return None
@@ -123,15 +128,17 @@ class WordForm(BaseModel):
     @property
     def has_structured_morphology(self) -> bool:
         """Check whether explicit verbal morphology has been attached."""
-        return any([
-            self.subject_marker,
-            self.tense_marker,
-            self.object_marker,
-            self.suffixes_extensions,
-            self.final_vowel,
-            self.polarity,
-            self.verb_components is not None,
-        ])
+        return any(
+            [
+                self.subject_marker,
+                self.tense_marker,
+                self.object_marker,
+                self.suffixes_extensions,
+                self.final_vowel,
+                self.polarity,
+                self.verb_components is not None,
+            ]
+        )
 
 
 class Meaning(BaseModel):
@@ -142,16 +149,17 @@ class Meaning(BaseModel):
     surface forms so the model can represent multiple realizations of the
     same underlying concept.
     """
+
     lexeme_lemma: str = Field(..., min_length=1, max_length=100)
     gloss: str = Field(..., min_length=1)
-    definition: Optional[str] = None
-    english_translation: Optional[str] = None
-    semantic_domain: Optional[str] = None
-    usage_notes: Optional[str] = None
-    synonyms: List[str] = Field(default_factory=list)
+    definition: str | None = None
+    english_translation: str | None = None
+    semantic_domain: str | None = None
+    usage_notes: str | None = None
+    synonyms: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    @field_validator('lexeme_lemma')
+    @field_validator("lexeme_lemma")
     @classmethod
     def normalize_lemma(cls, v: str) -> str:
         """Normalize lexical lemma references."""
@@ -171,26 +179,27 @@ class Context(BaseModel):
     Context stores attested example sentences and references back to the
     relevant lexeme and optionally a specific word form.
     """
+
     text: str = Field(..., min_length=1)
-    english_translation: Optional[str] = None
+    english_translation: str | None = None
     lexeme_lemma: str = Field(..., min_length=1, max_length=100)
-    word_form: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    source: Optional[str] = None
-    source_url: Optional[str] = None
-    sentence_id: Optional[int] = Field(default=None, ge=0)
-    token_start: Optional[int] = Field(default=None, ge=0)
-    token_end: Optional[int] = Field(default=None, ge=0)
+    word_form: str | None = Field(default=None, min_length=1, max_length=100)
+    source: str | None = None
+    source_url: str | None = None
+    sentence_id: int | None = Field(default=None, ge=0)
+    token_start: int | None = Field(default=None, ge=0)
+    token_end: int | None = Field(default=None, ge=0)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    @field_validator('lexeme_lemma')
+    @field_validator("lexeme_lemma")
     @classmethod
     def normalize_lemma(cls, v: str) -> str:
         """Normalize lexical lemma references."""
         return v.strip().lower()
 
-    @field_validator('word_form')
+    @field_validator("word_form")
     @classmethod
-    def normalize_word_form(cls, v: Optional[str]) -> Optional[str]:
+    def normalize_word_form(cls, v: str | None) -> str | None:
         """Normalize optional surface form references."""
         if v is None:
             return None
@@ -210,14 +219,15 @@ class Derivation(BaseModel):
     This models lexical families such as base forms, applicatives,
     causatives, nominalizations, and other derivational processes.
     """
+
     source_lexeme: str = Field(..., min_length=1, max_length=100)
     target_lexeme: str = Field(..., min_length=1, max_length=100)
     process: str = Field(..., min_length=1, max_length=100)
-    notes: Optional[str] = None
+    notes: str | None = None
     is_productive: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    @field_validator('source_lexeme', 'target_lexeme', 'process')
+    @field_validator("source_lexeme", "target_lexeme", "process")
     @classmethod
     def normalize_fields(cls, v: str) -> str:
         """Normalize lexical references and process labels."""
@@ -237,21 +247,22 @@ class Lexeme(BaseModel):
     separates abstract identity from the concrete word forms that realize
     it in text.
     """
+
     lemma: str = Field(..., min_length=1, max_length=100)
     word_type: WordType = WordType.UNKNOWN
     etymology: Etymology = Etymology.UNKNOWN
     noun_class: BantuClass = BantuClass.UNKNOWN
-    root: Optional[MorphologicalRoot] = None
-    word_forms: List[WordForm] = Field(default_factory=list)
-    meanings: List[Meaning] = Field(default_factory=list)
-    contexts: List[Context] = Field(default_factory=list)
-    derivations: List[Derivation] = Field(default_factory=list)
+    root: MorphologicalRoot | None = None
+    word_forms: list[WordForm] = Field(default_factory=list)
+    meanings: list[Meaning] = Field(default_factory=list)
+    contexts: list[Context] = Field(default_factory=list)
+    derivations: list[Derivation] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
     model_config = ConfigDict(use_enum_values=False, validate_assignment=True)
 
-    @field_validator('lemma')
+    @field_validator("lemma")
     @classmethod
     def normalize_lemma(cls, v: str) -> str:
         """Normalize the canonical lemma."""
@@ -308,10 +319,11 @@ class Lexeme(BaseModel):
 
     def add_derivation(self, derivation: Derivation) -> None:
         """Attach a derivational relation involving this lexeme."""
-        if derivation.source_lexeme != self.lemma and derivation.target_lexeme != self.lemma:
-            raise ValueError(
-                f"Derivation does not involve lexeme '{self.lemma}'"
-            )
+        if (
+            derivation.source_lexeme != self.lemma
+            and derivation.target_lexeme != self.lemma
+        ):
+            raise ValueError(f"Derivation does not involve lexeme '{self.lemma}'")
         if derivation.is_self_derivation:
             raise ValueError("Derivation cannot point to the same lexeme")
 
@@ -320,7 +332,7 @@ class Lexeme(BaseModel):
             self.updated_at = datetime.utcnow()
 
     @property
-    def canonical_form(self) -> Optional[WordForm]:
+    def canonical_form(self) -> WordForm | None:
         """Return the marked canonical form when present."""
         for word_form in self.word_forms:
             if word_form.is_canonical:
@@ -328,7 +340,7 @@ class Lexeme(BaseModel):
         return None
 
     @property
-    def primary_meaning(self) -> Optional[Meaning]:
+    def primary_meaning(self) -> Meaning | None:
         """Return the first available meaning as a temporary default."""
         return self.meanings[0] if self.meanings else None
 
@@ -350,7 +362,7 @@ class SwahiliTerm(BaseModel):
     Represents a unique word in the vocabulary with all of its
     linguistic and semantic metadata. It is the aggregate root of the
     domain.
-    
+
     Attributes:
         term: The Swahili word (normalized, lowercase)
         root: Morphological root (if identified)
@@ -361,13 +373,13 @@ class SwahiliTerm(BaseModel):
         frequency_score: Usage frequency (computed from corpora)
         created_at: Creation timestamp
         updated_at: Last update timestamp
-    
+
     Business Rules:
         - The term must have at least 1 character
         - The term is always normalized to lowercase
         - Stopwords should have frequency_score ignored in analysis
         - Only nouns have a meaningful noun_class
-    
+
     Examples:
         >>> term = SwahiliTerm(term="mtu", noun_class=BantuClass.M_WA)
         >>> term.is_noun
@@ -376,68 +388,69 @@ class SwahiliTerm(BaseModel):
         >>> term.frequency_score
         5.0
     """
+
     term: str = Field(..., min_length=1, max_length=100)
-    root: Optional[MorphologicalRoot] = None
+    root: MorphologicalRoot | None = None
     noun_class: BantuClass = BantuClass.UNKNOWN
     etymology: Etymology = Etymology.UNKNOWN
     word_type: WordType = WordType.UNKNOWN
     is_stopword: bool = False
     frequency_score: float = Field(default=0.0, ge=0.0)
-    
+
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = None
-    
+    updated_at: datetime | None = None
+
     model_config = ConfigDict(use_enum_values=False, validate_assignment=True)
-    
-    @field_validator('term')
+
+    @field_validator("term")
     @classmethod
     def normalize_term(cls, v: str) -> str:
         """
         Normalize the term: lowercase and trim spaces.
-        
+
         Args:
             v: Term to normalize
-            
+
         Returns:
             Normalized term
         """
         return v.strip().lower()
-    
+
     @property
     def is_noun(self) -> bool:
         """Check whether this is a noun."""
         return self.word_type == WordType.NOUN
-    
+
     @property
     def is_verb(self) -> bool:
         """Check whether this is a verb."""
         return self.word_type == WordType.VERB
-    
+
     @property
     def has_bantu_class(self) -> bool:
         """Check whether a Bantu class has been identified."""
         return self.noun_class.is_identified
-    
+
     @property
     def is_native(self) -> bool:
         """Check whether this is a native Bantu word."""
         return self.etymology.is_native
-    
+
     def update_frequency(self, increment: float = 1.0) -> None:
         """
         Increment the term's usage frequency.
 
         Business Rule: Stopwords should not have their frequency
         incremented in semantic analysis.
-        
+
         Args:
             increment: Increment value (default: 1.0)
         """
         if not self.is_stopword:
             self.frequency_score += increment
         self.updated_at = datetime.utcnow()
-    
+
     def mark_as_stopword(self) -> None:
         """
         Mark the term as a stopword.
@@ -447,13 +460,13 @@ class SwahiliTerm(BaseModel):
         self.is_stopword = True
         self.frequency_score = 0.0
         self.updated_at = datetime.utcnow()
-    
+
     def set_word_type(self, word_type: WordType) -> None:
         """
         Set the grammatical type.
 
         Business Rule: If the type is not noun, remove the Bantu class.
-        
+
         Args:
             word_type: Grammatical type
         """
@@ -461,11 +474,11 @@ class SwahiliTerm(BaseModel):
         if word_type != WordType.NOUN:
             self.noun_class = BantuClass.UNKNOWN
         self.updated_at = datetime.utcnow()
-    
+
     def __str__(self) -> str:
         """String representation."""
         return f"SwahiliTerm('{self.term}', {self.word_type.value})"
-    
+
     def __repr__(self) -> str:
         """Debug representation."""
         return (
@@ -506,7 +519,7 @@ class DictionaryEntry(BaseModel):
 
     Related to SwahiliTerm (aggregate root) and adds semantic
     information from the Kamusi dictionary.
-    
+
     Attributes:
         term: Swahili term (aggregate root)
         meaning: Definition in Swahili
@@ -515,12 +528,12 @@ class DictionaryEntry(BaseModel):
         antonyms: List of antonyms
         usage_examples: Usage examples in sentences
         usage_context: Usage context (formal, informal, etc.)
-    
+
     Business Rules:
         - It must have at least one meaning
         - Synonyms must be different words from the main term
         - Examples should contain the term
-    
+
     Examples:
         >>> term = SwahiliTerm(term="mtu")
         >>> entry = DictionaryEntry(
@@ -532,68 +545,69 @@ class DictionaryEntry(BaseModel):
         >>> len(entry.synonyms)
         1
     """
+
     term: SwahiliTerm
     meaning: str = Field(..., min_length=1)
-    english_translation: Optional[str] = None
-    synonyms: List[str] = Field(default_factory=list)
-    antonyms: List[str] = Field(default_factory=list)
-    usage_examples: List[str] = Field(default_factory=list)
-    usage_context: Optional[str] = None  # formal, informal, slang, technical
-    
+    english_translation: str | None = None
+    synonyms: list[str] = Field(default_factory=list)
+    antonyms: list[str] = Field(default_factory=list)
+    usage_examples: list[str] = Field(default_factory=list)
+    usage_context: str | None = None  # formal, informal, slang, technical
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
+
     def add_synonym(self, synonym: str) -> None:
         """
         Add a synonym if it is not already present.
 
         Business Rule: Do not add the term itself as a synonym.
-        
+
         Args:
             synonym: Synonym word
         """
         synonym = synonym.strip().lower()
         if synonym != self.term.term and synonym not in self.synonyms:
             self.synonyms.append(synonym)
-    
+
     def add_antonym(self, antonym: str) -> None:
         """
         Add an antonym if it is not already present.
-        
+
         Args:
             antonym: Antonym word
         """
         antonym = antonym.strip().lower()
         if antonym not in self.antonyms:
             self.antonyms.append(antonym)
-    
+
     def add_usage_example(self, example: str) -> None:
         """
         Add a usage example.
 
         Business Rule: The example should contain the term (relaxed validation).
-        
+
         Args:
             example: Example sentence
         """
         example = example.strip()
         if example and example not in self.usage_examples:
             self.usage_examples.append(example)
-    
+
     @property
     def has_translation(self) -> bool:
         """Check whether an English translation is present."""
         return self.english_translation is not None
-    
+
     @property
     def has_synonyms(self) -> bool:
         """Check whether synonyms are present."""
         return len(self.synonyms) > 0
-    
+
     @property
     def has_examples(self) -> bool:
         """Check whether usage examples are present."""
         return len(self.usage_examples) > 0
-    
+
     def __str__(self) -> str:
         """String representation."""
         return f"DictionaryEntry('{self.term.term}': {self.meaning})"
@@ -604,7 +618,7 @@ class VerbConjugation(BaseModel):
     Entity: Verb conjugation.
 
     Represents a specific conjugated form of a Swahili verb.
-    
+
     Attributes:
         verb_root: Verb root (e.g. "-soma" for "to read")
         tense: Verb tense (present, past, future, etc.)
@@ -612,11 +626,11 @@ class VerbConjugation(BaseModel):
         form: Full conjugated form (e.g. "ninasoma")
         prefix_chain: Prefix chain (e.g. "ni-na-")
         is_affirmative: Whether the form is affirmative (vs. negative)
-    
+
     Business Rules:
         - Verb roots must start with a hyphen (convention)
         - The form should be consistent with prefix and root
-    
+
     Examples:
         >>> conj = VerbConjugation(
         ...     verb_root="-soma",
@@ -628,45 +642,46 @@ class VerbConjugation(BaseModel):
         >>> conj.is_first_person
         True
     """
+
     verb_root: str
     tense: str  # present, past, future, perfect, etc.
     person: str  # 1sg, 2sg, 3sg, 1pl, 2pl, 3pl
     form: str
-    prefix_chain: Optional[str] = None
+    prefix_chain: str | None = None
     is_affirmative: bool = True
-    
-    @field_validator('verb_root')
+
+    @field_validator("verb_root")
     @classmethod
     def validate_root(cls, v: str) -> str:
         """
         Ensure verb roots start with a hyphen.
-        
+
         Args:
             v: Verb root
-            
+
         Returns:
             Root normalized with hyphen
         """
         v = v.strip().lower()
-        if not v.startswith('-'):
-            return f'-{v}'
+        if not v.startswith("-"):
+            return f"-{v}"
         return v
-    
+
     @property
     def is_first_person(self) -> bool:
         """Check whether this is first person."""
-        return self.person.startswith('1')
-    
+        return self.person.startswith("1")
+
     @property
     def is_singular(self) -> bool:
         """Check whether this is singular."""
-        return self.person.endswith('sg')
-    
+        return self.person.endswith("sg")
+
     @property
     def is_plural(self) -> bool:
         """Check whether this is plural."""
-        return self.person.endswith('pl')
-    
+        return self.person.endswith("pl")
+
     def __str__(self) -> str:
         """String representation."""
         return f"{self.form} ({self.tense}, {self.person})"
@@ -675,10 +690,10 @@ class VerbConjugation(BaseModel):
 class POSRecord(BaseModel):
     """
     Entity: Record of Part-of-Speech.
-    
+
     Represents a grammatical annotation of a word in a specific sentence
     context (Masakhane-POS data).
-    
+
     Attributes:
         term: Annotated word
         tag: Grammatical tag (NOUN, VERB, ADJ, etc.)
@@ -686,35 +701,36 @@ class POSRecord(BaseModel):
         sentence_id: Sentence ID in the corpus
         word_order: Word position in the sentence
         confidence: Annotation confidence [0.0, 1.0]
-    
+
     Business Rules:
         - sentence_id and word_order identify a unique position
         - default confidence is 1.0 (manual annotation)
     """
+
     term: str
     tag: str  # NOUN, VERB, ADJ, ADP, DET, etc.
-    prefix_chain: Optional[str] = None
+    prefix_chain: str | None = None
     sentence_id: int = Field(..., ge=0)
     word_order: int = Field(..., ge=0)
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-    
-    @field_validator('term')
+
+    @field_validator("term")
     @classmethod
     def normalize_term(cls, v: str) -> str:
         """Normalize the term."""
         return v.strip().lower()
-    
-    @field_validator('tag')
+
+    @field_validator("tag")
     @classmethod
     def normalize_tag(cls, v: str) -> str:
         """Normalize the tag to uppercase."""
         return v.strip().upper()
-    
+
     @property
     def is_confident(self, threshold: float = 0.8) -> bool:
         """Check whether the annotation has high confidence."""
         return self.confidence >= threshold
-    
+
     def __str__(self) -> str:
         """String representation."""
         return f"{self.term}/{self.tag}"
@@ -725,7 +741,7 @@ class NewsArticle(BaseModel):
     Aggregate: News article.
 
     Represents a complete article with associated analyses.
-    
+
     Attributes:
         content: Full text content
         category: News category (Kitaifa, Kimataifa, etc.)
@@ -733,12 +749,12 @@ class NewsArticle(BaseModel):
         sentiment_score: Sentiment analysis
         entities_mentioned: Mentioned entities (NER)
         source_url: Original source URL
-    
+
     Business Rules:
         - Content cannot be empty
         - Sentiment is computed, not manually provided
         - Entities are extracted through NER
-    
+
     Examples:
         >>> article = NewsArticle(
         ...     content="Rais ametembelea Zanzibar...",
@@ -749,33 +765,34 @@ class NewsArticle(BaseModel):
         >>> article.has_sentiment
         True
     """
+
     content: str = Field(..., min_length=10)
     category: str
-    date_published: Optional[datetime] = None
-    sentiment_score: Optional[SentimentScore] = None
-    entities_mentioned: List[str] = Field(default_factory=list)
-    source_url: Optional[str] = None
-    
+    date_published: datetime | None = None
+    sentiment_score: SentimentScore | None = None
+    entities_mentioned: list[str] = Field(default_factory=list)
+    source_url: str | None = None
+
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
+
     def analyze_sentiment(self, score: SentimentScore) -> None:
         """
         Attach sentiment analysis to the article.
 
         Business Rule: Sentiment must be computed, not manually provided.
-        
+
         Args:
             score: Computed sentiment score
         """
         self.sentiment_score = score
-    
-    def add_entity(self, entity: str, entity_type: Optional[EntityType] = None) -> None:
+
+    def add_entity(self, entity: str, entity_type: EntityType | None = None) -> None:
         """
         Add an entity mentioned in the article.
-        
+
         Args:
             entity: Entity name
             entity_type: Entity type (optional)
@@ -783,29 +800,29 @@ class NewsArticle(BaseModel):
         entity = entity.strip()
         if entity and entity not in self.entities_mentioned:
             self.entities_mentioned.append(entity)
-    
+
     @property
     def has_sentiment(self) -> bool:
         """Check whether sentiment analysis is present."""
         return self.sentiment_score is not None
-    
+
     @property
     def has_entities(self) -> bool:
         """Check whether identified entities are present."""
         return len(self.entities_mentioned) > 0
-    
+
     @property
-    def sentiment_label(self) -> Optional[str]:
+    def sentiment_label(self) -> str | None:
         """Return the sentiment label if available."""
         if self.sentiment_score:
             return self.sentiment_score.label
         return None
-    
+
     @property
     def word_count(self) -> int:
         """Count the words in the article."""
         return len(self.content.split())
-    
+
     def __str__(self) -> str:
         """String representation."""
         preview = self.content[:50] + "..." if len(self.content) > 50 else self.content
@@ -819,27 +836,22 @@ if __name__ == "__main__":
         term="mtu",
         noun_class=BantuClass.M_WA,
         word_type=WordType.NOUN,
-        etymology=Etymology.BANTU
+        etymology=Etymology.BANTU,
     )
     print(f"Term: {term}")
     print(f"Is noun: {term.is_noun}")
     print(f"Has Bantu class: {term.has_bantu_class}")
-    
+
     # Create dictionary entry
-    entry = DictionaryEntry(
-        term=term,
-        meaning="binadamu",
-        english_translation="person"
-    )
+    entry = DictionaryEntry(term=term, meaning="binadamu", english_translation="person")
     entry.add_synonym("binadamu")
     entry.add_usage_example("Mtu huyu ni rafiki yangu")
     print(f"\nEntry: {entry}")
     print(f"Synonyms: {entry.synonyms}")
-    
+
     # Create article
     article = NewsArticle(
-        content="Rais wa Tanzania ametembelea mkoa wa Zanzibar.",
-        category="Kitaifa"
+        content="Rais wa Tanzania ametembelea mkoa wa Zanzibar.", category="Kitaifa"
     )
     sentiment = SentimentScore(polarity=0.3, confidence=0.85)
     article.analyze_sentiment(sentiment)

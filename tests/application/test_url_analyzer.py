@@ -37,7 +37,10 @@ def test_fetch_revalidates_redirect_target(monkeypatch):
         lambda *_args, **_kwargs: [(2, 1, 6, "", ("93.184.216.34", 443))],
     )
     redirect = Mock(status_code=302, headers={"Location": "http://127.0.0.1/admin"})
-    monkeypatch.setattr("src.application.services.url_analyzer.requests.get", Mock(return_value=redirect))
+    monkeypatch.setattr(
+        "src.application.services.url_analyzer.requests.get",
+        Mock(return_value=redirect),
+    )
 
     assert URLNewsAnalyzer().fetch_url("https://example.com/article") is None
 
@@ -56,7 +59,10 @@ def test_fetch_accepts_bounded_html_response(monkeypatch):
         text="<html><p>Habari za Kiswahili</p></html>",
     )
     response.raise_for_status.return_value = None
-    monkeypatch.setattr("src.application.services.url_analyzer.requests.get", Mock(return_value=response))
+    monkeypatch.setattr(
+        "src.application.services.url_analyzer.requests.get",
+        Mock(return_value=response),
+    )
 
     assert "Habari" in URLNewsAnalyzer().fetch_url("https://example.com/article")
 

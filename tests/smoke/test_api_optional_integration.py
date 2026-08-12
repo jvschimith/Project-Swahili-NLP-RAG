@@ -1,13 +1,13 @@
 """
 Optional integration smoke tests for endpoints that may depend on network access.
 """
+
 import os
 
 import pytest
 from fastapi.testclient import TestClient
 
 from src.web.api import app
-
 
 RUN_OPTIONAL_INTEGRATION = os.getenv("RUN_OPTIONAL_INTEGRATION") == "1"
 

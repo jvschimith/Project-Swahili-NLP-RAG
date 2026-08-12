@@ -2,6 +2,7 @@
 """
 Quick test to verify /news/save endpoint exists
 """
+
 import requests
 
 API_URL = "http://localhost:8000"
@@ -38,10 +39,10 @@ try:
         "source_url": "https://test.com",
         "sentiment_polarity": 0.5,
         "sentiment_confidence": 0.8,
-        "sentiment_label": "neutral"
+        "sentiment_label": "neutral",
     }
     response = requests.post(f"{API_URL}/news/save", json=test_data)
-    
+
     if response.status_code == 200:
         print(f"✅ POST /news/save: {response.status_code}")
         print(f"   Response: {response.json()}")
@@ -54,9 +55,9 @@ try:
 except Exception as e:
     print(f"❌ POST /news/save failed: {e}")
 
-print("\n" + "="*50)
+print("\n" + "=" * 50)
 print("If you see 404 above, do this:")
 print("1. Stop the API (Ctrl+C)")
 print("2. Restart: uvicorn src.web.api:app --reload")
 print("3. Run this test again")
-print("="*50)
+print("=" * 50)

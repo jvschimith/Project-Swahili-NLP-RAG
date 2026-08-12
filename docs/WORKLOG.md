@@ -77,3 +77,38 @@
 ### Blocked
 
 - System package management lacks root privileges; user-local pip bootstrapping provided a safe workaround.
+
+## Checkpoint 3
+
+### Completed
+
+- Added semantic tests for CoNLL/BIO/TSV/JSON-LD exports, confidence omission, and reproducible dataset splitting.
+- Implemented and fixture-tested static page inspection plus a safe developer CLI.
+- Applied repository-wide automated formatting and import cleanup.
+- Completed API/database/Streamlit smoke validation and adversarial review.
+
+### Findings
+
+- Final suite: 128 passed, 1 optional network test skipped, 0 failed; coverage 65%.
+- Ruff still reports 62 legacy/design issues; mypy reports 88 issues, primarily SQLAlchemy typing and ingestion paths.
+- Streamlit imports successfully in bare mode with expected missing-context warnings.
+
+### Tests
+
+- FastAPI import: passed (23 framework/application routes including documentation routes).
+- Database initialization: passed.
+- Streamlit import: passed.
+- Page inspector CLI help: passed.
+
+### Decisions
+
+- Do not hide remaining lint/type debt with blanket ignores.
+- Defer timezone/storage migration and typed SQLAlchemy mapping to a coherent follow-up.
+
+### Next
+
+- Address timezone warnings, ingestion coverage, and typed persistence; add language/deduplication/provenance foundations.
+
+### Blocked
+
+- None.

@@ -128,14 +128,15 @@ pytest -m "not slow"
 import pytest
 from src.domain.entities import SwahiliTerm
 
+
 class TestSwahiliTerm:
     """Tests for SwahiliTerm entity."""
-    
+
     def test_create_term(self):
         """Test creating a term."""
         term = SwahiliTerm(term="mtu")
         assert term.term == "mtu"
-    
+
     def test_invalid_term_raises_error(self):
         """Test invalid term raises error."""
         with pytest.raises(ValueError):
@@ -150,11 +151,8 @@ Create reusable test data with fixtures:
 @pytest.fixture
 def sample_term():
     """Create a sample term for testing."""
-    return SwahiliTerm(
-        term="mtu",
-        noun_class=BantuClass.M_WA,
-        word_type=WordType.NOUN
-    )
+    return SwahiliTerm(term="mtu", noun_class=BantuClass.M_WA, word_type=WordType.NOUN)
+
 
 def test_with_fixture(sample_term):
     """Test using fixture."""

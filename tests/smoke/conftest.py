@@ -1,9 +1,9 @@
 """
 Smoke-test fixtures for alpha API validation.
 """
-from typing import List, Optional
 
 import pytest
+
 from src.domain.entities import DictionaryEntry, NewsArticle, SwahiliTerm
 from src.domain.value_objects import BantuClass, Etymology, MorphologicalRoot, WordType
 from src.web.api import (
@@ -28,7 +28,7 @@ class FakeTermRepository:
             frequency_score=15.5,
         )
 
-    def find_by_term(self, term: str) -> Optional[SwahiliTerm]:
+    def find_by_term(self, term: str) -> SwahiliTerm | None:
         normalized = term.strip().lower()
         if normalized == self._term.term:
             return self._term
@@ -58,7 +58,7 @@ class FakeDictionaryRepository:
             usage_context="formal",
         )
 
-    def find_by_term_string(self, term: str) -> Optional[DictionaryEntry]:
+    def find_by_term_string(self, term: str) -> DictionaryEntry | None:
         if term.strip().lower() == self._entry.term.term:
             return self._entry
         return None
@@ -68,7 +68,7 @@ class FakeNewsRepository:
     """Minimal in-memory news repository for stable smoke tests."""
 
     def __init__(self) -> None:
-        self._saved_articles: List[NewsArticle] = []
+        self._saved_articles: list[NewsArticle] = []
 
     def save(self, article: NewsArticle) -> int:
         self._saved_articles.append(article)

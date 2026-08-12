@@ -4,8 +4,8 @@ Domain Service: Linguistic Analysis
 Turns a single Swahili word into lexeme-first domain entities using the
 existing morphology services.
 """
+
 from dataclasses import dataclass
-from typing import Optional
 
 from ..entities import Lexeme, WordForm
 from ..linguistic_rules import (
@@ -26,6 +26,7 @@ class LinguisticAnalysisResult:
     The service always returns a populated WordForm and a minimal Lexeme
     containing that form.
     """
+
     word_form: WordForm
     lexeme: Lexeme
 
@@ -37,8 +38,8 @@ class LinguisticAnalysisService:
 
     def __init__(
         self,
-        root_service: Optional[RootExtractorService] = None,
-        bantu_service: Optional[BantuClassifierService] = None,
+        root_service: RootExtractorService | None = None,
+        bantu_service: BantuClassifierService | None = None,
     ):
         self.root_service = root_service or RootExtractorService()
         self.bantu_service = bantu_service or BantuClassifierService()
@@ -90,7 +91,9 @@ class LinguisticAnalysisService:
         if verb_components.subject_marker and verb_components.tense_marker:
             return WordType.VERB
 
-        inferred_noun_class = self.bantu_service.infer_class(normalized_word, WordType.NOUN)
+        inferred_noun_class = self.bantu_service.infer_class(
+            normalized_word, WordType.NOUN
+        )
         if inferred_noun_class.is_identified:
             return WordType.NOUN
 
@@ -114,7 +117,7 @@ class LinguisticAnalysisService:
         self,
         normalized_word: str,
         word_type: WordType,
-    ) -> Optional[VerbComponents]:
+    ) -> VerbComponents | None:
         """Only attach explicit verbal morphology when the word looks verbal."""
         if word_type != WordType.VERB:
             return None
@@ -125,7 +128,7 @@ class LinguisticAnalysisService:
         normalized_word: str,
         word_type: WordType,
         root: MorphologicalRoot,
-        verb_components: Optional[VerbComponents],
+        verb_components: VerbComponents | None,
     ) -> str:
         """
         Infer a stable lexeme lemma from the analysis.
@@ -145,9 +148,9 @@ class LinguisticAnalysisService:
 
     @staticmethod
     def _build_canonical_verb_lemma(
-        verb_components: Optional[VerbComponents],
+        verb_components: VerbComponents | None,
         root: MorphologicalRoot,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Construct a conservative infinitive-style lemma for verbs."""
         root_text = None
         final_vowel = None
@@ -174,7 +177,7 @@ class LinguisticAnalysisService:
         lexeme_lemma: str,
         word_type: WordType,
         root: MorphologicalRoot,
-        verb_components: Optional[VerbComponents],
+        verb_components: VerbComponents | None,
     ) -> WordForm:
         """Create a structured word form from morphology analysis."""
         suffixes_extensions = []
