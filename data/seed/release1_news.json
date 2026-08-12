@@ -1,0 +1,23 @@
+[
+  {
+    "category": "Education",
+    "content": "Watu wengi wanasoma habari za elimu kila siku katika miji mbalimbali ya Tanzania.",
+    "source_url": "seed://release1/news/education-001",
+    "sentiment_polarity": 0.2,
+    "sentiment_confidence": 0.8
+  },
+  {
+    "category": "Culture",
+    "content": "Mtu mmoja alisoma shairi la Kiswahili kwenye tamasha la utamaduni jijini Dar es Salaam.",
+    "source_url": "seed://release1/news/culture-001",
+    "sentiment_polarity": 0.1,
+    "sentiment_confidence": 0.7
+  },
+  {
+    "category": "Community",
+    "content": "Ninakupenda ni usemi unaoonekana mara nyingi katika mifano ya sarufi ya Kiswahili.",
+    "source_url": "seed://release1/news/community-001",
+    "sentiment_polarity": 0.4,
+    "sentiment_confidence": 0.9
+  }
+]

@@ -1,0 +1,44 @@
+[
+  {
+    "sentence_id": 1,
+    "word_order": 1,
+    "word": "Mtu",
+    "tag": "NOUN",
+    "prefix_chain": "m-"
+  },
+  {
+    "sentence_id": 1,
+    "word_order": 2,
+    "word": "anasoma",
+    "tag": "VERB",
+    "prefix_chain": "a-na-"
+  },
+  {
+    "sentence_id": 1,
+    "word_order": 3,
+    "word": "kitabu",
+    "tag": "NOUN",
+    "prefix_chain": "ki-"
+  },
+  {
+    "sentence_id": 2,
+    "word_order": 1,
+    "word": "Watu",
+    "tag": "NOUN",
+    "prefix_chain": "wa-"
+  },
+  {
+    "sentence_id": 2,
+    "word_order": 2,
+    "word": "wanasoma",
+    "tag": "VERB",
+    "prefix_chain": "wa-na-"
+  },
+  {
+    "sentence_id": 3,
+    "word_order": 1,
+    "word": "ninakupenda",
+    "tag": "VERB",
+    "prefix_chain": "ni-na-ku-"
+  }
+]

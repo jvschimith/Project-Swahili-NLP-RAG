@@ -1,0 +1,29 @@
+[
+  {
+    "word": "mtu",
+    "word_type": "noun",
+    "etymology": "bantu",
+    "meaning": "binadamu, mwanadamu",
+    "english_translation": "person, human being",
+    "synonyms": ["binadamu", "mwanadamu"],
+    "usage_examples": ["Mtu huyu ni mwalimu."]
+  },
+  {
+    "word": "watu",
+    "word_type": "noun",
+    "etymology": "bantu",
+    "meaning": "jamii ya binadamu wengi",
+    "english_translation": "people",
+    "synonyms": ["raia"],
+    "usage_examples": ["Watu wengi wanasoma habari kila siku."]
+  },
+  {
+    "word": "soma",
+    "word_type": "verb",
+    "etymology": "bantu",
+    "meaning": "kusoma maandishi au kujifunza",
+    "english_translation": "read, study",
+    "synonyms": ["jifunza"],
+    "usage_examples": ["Ninasoma kitabu cha historia."]
+  }
+]

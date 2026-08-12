@@ -1,0 +1,68 @@
+# ============================================
+# SWAHILI NLP RAG - REQUIREMENTS
+# ============================================
+
+# -------------------- CORE --------------------
+python-dotenv==1.0.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+loguru==0.7.2
+
+# -------------------- DATABASE --------------------
+SQLAlchemy==2.0.23
+alembic==1.13.1
+
+# -------------------- DATA PROCESSING --------------------
+pandas==2.1.4
+numpy==1.26.2
+
+# -------------------- NLP --------------------
+googletrans==4.0.0rc1
+scikit-learn==1.3.2
+
+# -------------------- RESEARCH FEATURES (Phase 1) --------------------
+datasets==2.16.1
+transformers==4.36.2
+torch==2.1.2
+
+# -------------------- CLI --------------------
+click==8.1.7
+tqdm==4.66.1
+rich==13.7.0
+
+# -------------------- TESTING --------------------
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# -------------------- CODE QUALITY --------------------
+black==23.12.1
+isort==5.13.2
+flake8==7.0.0
+mypy==1.8.0
+
+# -------------------- WEB (optional - for futuro) --------------------
+# fastapi==0.109.0
+# uvicorn==0.26.0
+# python-multipart==0.0.6
+
+# -------------------- WEB --------------------
+fastapi==0.109.0
+uvicorn[standard]==0.26.0
+python-multipart==0.0.6
+requests==2.31.0
+beautifulsoup4==4.12.2
+
+# -------------------- VISUALIZATION --------------------
+streamlit==1.31.0
+plotly==5.18.0
+
+# -------------------- MONITORING (opcional) --------------------
+# sentry-sdk==1.39.2
+
+# -------------------- DEVELOPMENT --------------------
+ipython==8.19.0
+jupyter==1.0.0
+
+# -------------------- UTILITIES --------------------
+python-dateutil==2.8.2
