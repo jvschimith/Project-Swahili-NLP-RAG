@@ -106,6 +106,19 @@ VERB_SUBJECT_MARKERS = {
     "wa": "3pl",
 }
 
+# Negative subject concords are fused polarity/person markers. They must be
+# tested longest-first because ``ha`` is contained in plural forms.
+NEGATIVE_SUBJECT_MARKERS = {
+    "hatu": "1pl",
+    "ham": "2pl",
+    "hawa": "3pl",
+    "si": "1sg",
+    "hu": "2sg",
+    "ha": "3sg",
+}
+
+MONOSYLLABIC_VERB_RADICALS = {"ch", "chw", "f", "j", "l", "ny", "nyw", "p", "w"}
+
 
 VERB_TENSE_MARKERS = {
     "na": "present",

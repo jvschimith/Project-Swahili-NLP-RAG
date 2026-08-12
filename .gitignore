@@ -54,3 +54,6 @@ reports/*
 .vscode/
 *~
 
+# Copyrighted/private linguistic references (development harness only)
+references/private/
+references/*.pdf

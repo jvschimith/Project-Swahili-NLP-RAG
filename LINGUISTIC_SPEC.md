@@ -93,6 +93,11 @@ Current implementation behavior:
 - prefix-based rules are applied next
 - if no rule matches, the result is `N/A`
 
+Noun-class membership and agreement are separate computational concerns.
+`AgreementService` stores typed underlying concord paradigms and supports an
+explicit animate agreement override without changing morphological membership.
+Surface morphophonemic realization is not yet implemented.
+
 ## Rule Centralization
 
 The stable source of truth for linguistic rules is:
@@ -114,6 +119,8 @@ This module centralizes:
 - Noun lemma normalization does not yet derive singular lexical lemmas from plural forms.
 - Derivational suffix analysis is still lightweight and represented as `suffixes_extensions`.
 - Polarity is only inferred when verbal morphology exposes it clearly.
+- Regular negative present/past/future person forms are recognized heuristically.
+- Monosyllabic retained `ku-` has an initial regression rule, not full paradigm coverage.
 - The project does not yet model a full paradigm generator in the frozen contract.
 
 ## Intentionally Out of Scope

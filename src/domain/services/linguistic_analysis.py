@@ -91,9 +91,7 @@ class LinguisticAnalysisService:
         if verb_components.subject_marker and verb_components.tense_marker:
             return WordType.VERB
 
-        inferred_noun_class = self.bantu_service.infer_class(
-            normalized_word, WordType.NOUN
-        )
+        inferred_noun_class = self.bantu_service.infer_class(normalized_word, WordType.NOUN)
         if inferred_noun_class.is_identified:
             return WordType.NOUN
 
@@ -158,6 +156,10 @@ class LinguisticAnalysisService:
         if verb_components and verb_components.root:
             root_text = verb_components.root
             final_vowel = verb_components.final_vowel
+            if verb_components.polarity == "negative" and final_vowel == "i":
+                # Regular Bantu-origin verbs use -i in the negative present,
+                # while the lexical citation form retains final -a.
+                final_vowel = "a"
         elif root and root.root:
             root_text = root.root
             final_vowel = root.suffix

@@ -13,6 +13,9 @@ from loguru import logger
 
 from ..linguistic_rules import (
     AFFIRMATIVE_POLARITY,
+    MONOSYLLABIC_VERB_RADICALS,
+    NEGATIVE_POLARITY,
+    NEGATIVE_SUBJECT_MARKERS,
     NOMINAL_PREFIXES,
     NOMINAL_SUFFIXES,
     VERB_OBJECT_MARKERS,
@@ -72,9 +75,7 @@ class RootExtractorService:
     # Nominal suffixes
     NOMINAL_SUFFIXES = NOMINAL_SUFFIXES
 
-    ALL_SUFFIXES = sorted(
-        set(VERBAL_SUFFIXES + NOMINAL_SUFFIXES), key=len, reverse=True
-    )
+    ALL_SUFFIXES = sorted(set(VERBAL_SUFFIXES + NOMINAL_SUFFIXES), key=len, reverse=True)
 
     @classmethod
     def extract(
@@ -188,17 +189,34 @@ class RootExtractorService:
         # Subject markers (1 or 2 chars)
         remaining = original
         full_prefix = ""
+        polarity = AFFIRMATIVE_POLARITY
 
-        # 1. Try to identify subject
-        for marker, person in VERB_SUBJECT_MARKERS.items():
+        # Negative concord replaces the ordinary subject marker. In the
+        # negative present there is no overt tense marker; past and future
+        # retain -ku- and -ta- respectively.
+        for marker in NEGATIVE_SUBJECT_MARKERS:
             if remaining.startswith(marker):
+                material = remaining[len(marker) :]
+                if not (material.startswith(("ku", "ta")) or original.endswith("i")):
+                    continue
                 subject_marker = marker
+                polarity = NEGATIVE_POLARITY
                 full_prefix += marker
                 remaining = remaining[len(marker) :]
                 break
 
+        # 1. Try to identify subject
+        if subject_marker is None:
+            for marker in VERB_SUBJECT_MARKERS:
+                if remaining.startswith(marker):
+                    subject_marker = marker
+                    full_prefix += marker
+                    remaining = remaining[len(marker) :]
+                    break
+
         # 2. Try to identify tense
-        for marker, tense in VERB_TENSE_MARKERS.items():
+        tense_candidates = ("ku", "ta") if polarity == NEGATIVE_POLARITY else VERB_TENSE_MARKERS
+        for marker in tense_candidates:
             if remaining.startswith(marker):
                 tense_marker = marker
                 full_prefix += marker
@@ -208,6 +226,14 @@ class RootExtractorService:
         # 3. Try to identify object
         for marker in VERB_OBJECT_MARKERS:
             if remaining.startswith(marker) and len(remaining) > len(marker) + 2:
+                # Monosyllabic verbs retain infinitival ku- in many affirmative
+                # tense environments; it is not an object concord there.
+                candidate = remaining[len(marker) :]
+                candidate_radical = candidate[:-1] if candidate[-1:] in "aeiou" else candidate
+                if marker == "ku" and candidate_radical in MONOSYLLABIC_VERB_RADICALS:
+                    full_prefix += marker
+                    remaining = candidate
+                    break
                 object_marker = marker
                 full_prefix += marker
                 remaining = remaining[len(marker) :]
@@ -232,7 +258,7 @@ class RootExtractorService:
             # A well-formed surface verb without an overt negative marker is
             # affirmative in this lightweight analysis. Negative morphology
             # is still inferred centrally by VerbComponents when present.
-            polarity=AFFIRMATIVE_POLARITY if root and final_vowel else None,
+            polarity=polarity if root and final_vowel else None,
         )
 
     @classmethod
