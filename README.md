@@ -28,6 +28,8 @@ Implemented:
 - SQLite repositories and deterministic seed fixtures;
 - FastAPI endpoints for lexical lookup, morphology, dictionary/news records, a transparent lexicon-based sentiment baseline, and experimental batch/export workflows;
 - bounded HTTP(S) fetching with redirect validation and rejection of non-public network targets;
+- static-first corpus acquisition with structured extraction, Swahili validation,
+  content hashing, provenance, JSONL manifests, and exact deduplication;
 - a Streamlit local research/demo dashboard.
 
 Experimental:

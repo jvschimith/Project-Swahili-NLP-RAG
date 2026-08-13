@@ -121,3 +121,9 @@
 - Separated noun-class membership from typed agreement paradigms and animate concord.
 - Added negative present/past/future parsing and a retained-`ku` monosyllabic regression.
 - Added 14 curated synthetic cases, including a habitual-`hu` adversarial regression.
+## 2026-08-12 — Web corpus acquisition v1
+
+- Added the offline-testable static pipeline from inspection through manifest storage.
+- Added structured/semantic extraction, language evidence, URL/hash deduplication,
+  provenance, bounded RSS/sitemap discovery and a one-page CLI.
+- See `docs/WEB_ACQUISITION_SESSION_REPORT.md` for measured final results.
