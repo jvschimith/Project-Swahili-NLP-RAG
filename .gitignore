@@ -41,6 +41,8 @@ data/embeddings/*
 !data/embeddings/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+data/corpus/**
+!data/corpus/README.md
 data/raw/**
 !data/raw/README.md
 !data/raw/**/

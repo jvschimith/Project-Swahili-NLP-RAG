@@ -1,1 +1,1 @@
-"""Static-first public web acquisition foundations."""
+"""Static-first public web corpus acquisition."""

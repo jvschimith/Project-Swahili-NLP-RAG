@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import asdict, dataclass, field
+from typing import ClassVar
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -39,16 +40,19 @@ class PageInspectionResult:
 class PageInspector:
     """Inspect supplied HTML without performing network access."""
 
-    ARTICLE_TYPES = {"Article", "NewsArticle", "ReportageNewsArticle", "BlogPosting"}
+    ARTICLE_TYPES: ClassVar[set[str]] = {
+        "Article",
+        "NewsArticle",
+        "ReportageNewsArticle",
+        "BlogPosting",
+    }
 
     @classmethod
     def inspect_html(cls, url: str, html: str) -> PageInspectionResult:
         soup = BeautifulSoup(html, "html.parser")
         canonical = soup.find("link", rel=lambda value: value and "canonical" in value)
         canonical_url = (
-            urljoin(url, canonical.get("href"))
-            if canonical and canonical.get("href")
-            else None
+            urljoin(url, canonical.get("href")) if canonical and canonical.get("href") else None
         )
         html_language = soup.html.get("lang") if soup.html else None
         title = soup.title.get_text(" ", strip=True) if soup.title else None
@@ -75,8 +79,7 @@ class PageInspector:
         feeds = [
             urljoin(url, link["href"])
             for link in soup.find_all("link", href=True)
-            if (link.get("type") or "").lower()
-            in {"application/rss+xml", "application/atom+xml"}
+            if (link.get("type") or "").lower() in {"application/rss+xml", "application/atom+xml"}
         ]
         sitemap_urls = [
             urljoin(url, link["href"])
@@ -85,9 +88,7 @@ class PageInspector:
         ]
         scripts = soup.find_all("script")
         body_text = soup.get_text(" ", strip=True)
-        likely_dynamic = (
-            len(scripts) >= 12 and len(body_text) < 500 and len(paragraphs) < 3
-        )
+        likely_dynamic = len(scripts) >= 12 and len(body_text) < 500 and len(paragraphs) < 3
 
         strategy, explanation = cls._recommend(
             json_ld_types=json_ld_types,
