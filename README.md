@@ -43,7 +43,7 @@ Planned:
 
 - stronger lexeme-first persistence;
 - calibrated morphology confidence and linguistic error analysis;
-- structured page inspection, provenance, language validation, and corpus deduplication;
+- calibrated language evaluation, near-duplicate detection, and content version history;
 - site-aware extraction only where public static/structured evidence requires it.
 
 ## Linguistic analysis

@@ -17,3 +17,7 @@ same-URL historical versioning are planned. Feed and sitemap parsers preserve
 their discovery source, enforce result limits/domain filters, bound XML size and
 reject DTD/entity declarations; discovered URLs still require safe fetching and
 full page inspection.
+
+Deduplication scans the JSONL manifest incrementally to keep memory bounded. A
+page-declared canonical is an untrusted hint: only an absolute credential-free
+HTTP(S) URL is accepted, otherwise the safely fetched final URL is used.

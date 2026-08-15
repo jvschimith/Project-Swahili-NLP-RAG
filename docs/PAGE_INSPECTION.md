@@ -12,3 +12,6 @@ ReportageNewsArticle and BlogPosting. Malformed JSON-LD is ignored safely.
 Script-heavy pages with insufficient static text return
 `dynamic_browser_required`; no browser is installed or required. Future browser
 inspection should remain optional and focus on rendered/public request evidence.
+
+The inspector CLI includes requested/final URL, status, content type and retrieval
+time around the inspection payload, so redirects do not erase provenance.

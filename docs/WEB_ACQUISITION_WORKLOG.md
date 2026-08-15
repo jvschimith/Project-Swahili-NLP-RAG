@@ -1,38 +1,67 @@
 # Web Acquisition Worklog
 
-## Existing
+## New-machine baseline
 
-Bounded HTTP(S) fetching already rejected credentials, unsafe schemes/addresses,
-unsafe redirects, wrong content types and oversized HTML. `PageInspector`
-provided static semantic, JSON-LD, OpenGraph, feed, sitemap and dynamic signals.
+- Date: 2026-08-15; WSL2 kernel 6.18.33.2, repository on native `/home` storage.
+- 12 logical CPUs, 3.8 GiB RAM, 1.0 GiB swap, and 952 GiB filesystem space available.
+- Python 3.12.3 from the project-local Linux `.venv`; pip 26.2.1; Git 2.43.0.
+- Starting commit `373aa9c` on clean `main`; work continues on local branch
+  `feat/web-corpus-acquisition-v1`. Remotes were inspected and not modified.
+- Baseline: 155 collected, 154 passed, 1 optional-network skip, 0 failed, 68%
+  global branch-aware coverage in 12.95 seconds. `pip check` passed.
+- Black's repository-wide safety check cannot parse Python 3.13-only syntax while
+  running on Python 3.12, and focused retry processes stalled until interrupted.
+  Ruff, isort, tests and manual diff review cover touched files; this is recorded as
+  an interpreter/tooling difference rather than hidden as a passing Black result.
 
-## Missing at baseline
+## Existing components
 
-No canonical document, extractor strategy layer, language gate, normalization,
-hashing, deduplication, provenance store, manifest, discovery parsers or ingestion
-CLI existed.
+- SSRF-aware bounded `URLNewsAnalyzer` fetcher with redirect revalidation.
+- Static `PageInspector` with canonical, language, title, OpenGraph, JSON-LD,
+  semantic container, feed/sitemap, and dynamic-content evidence.
+- Structure-first extraction, normalization, heuristic Swahili validation,
+  SHA-256 identity, `WebDocument`, provenance, content-addressed JSON storage,
+  JSONL manifest, exact deduplication, RSS/Atom and sitemap parsing, and one-page CLI.
 
-## Architectural decisions
+## Missing components
 
-- Network fetching remains in the application service; the deterministic corpus
-  pipeline consumes HTML and never imports morphology.
-- Structure precedes paragraph fallback.
-- Language confidence is explicitly heuristic.
-- Storage is content-addressed JSON plus JSONL, not a new database.
-- Browser inspection is deferred because static P0/P1 is complete and useful.
+- Calibrated language identification and near-duplicate detection.
+- Historical version storage for changed content at one canonical URL.
+- Robots-policy/rate scheduler and recursive crawl orchestration.
+- Optional browser inspection and public structured-endpoint inspection.
+
+## Decisions
+
+- Preserve `fetch_url()` compatibility while adding a metadata-rich `FetchResult`.
+- Require explicit domains and a positive maximum for seed-page link discovery;
+  discovery parses one page and never recursively fetches.
+- Treat page-declared canonicals as untrusted identity hints: accept absolute,
+  credential-free HTTP(S) URLs and otherwise fall back to the final fetched URL.
+- Scan manifests incrementally during deduplication instead of loading them into RAM.
+- Keep browser tooling deferred; static P0/P1 remains sufficient and dependency-light.
 
 ## Tests
 
-Offline fixtures cover semantic/JSON-LD articles, noise, misleading language
-metadata, tracking URLs, duplicate URL/content, changed content, dynamic pages,
-RSS, sitemap bounds and hostile XML declarations.
+- New focused cases cover redirect metadata, timezone-aware retrieval, bounded and
+  domain-scoped seed links, tracking/canonical deduplication, invalid canonical
+  schemes/credentials/ports, and unsafe declared-canonical fallback.
+- Focused result after implementation: 31 passed, 0 failed.
 
-## Live-network limitations
+## Security findings
 
-Normal tests perform no network calls. The CLI uses the existing safe fetcher;
-robots policy remains a documented caller/deployment responsibility in v1.
+- Redirect targets continue to receive DNS/public-address validation.
+- Canonical links are never fetched automatically and can no longer inject unsafe URL
+  schemes or credentials into corpus identity.
+- Content-derived document identifiers remain path-safe; remote filenames are unused.
+- Application-level checks do not eliminate DNS rebinding; deployment egress controls
+  remain required for public operation.
+
+## Current task
+
+P0/P1 final validation, offline demonstration, adversarial review and the implementation
+commit are complete. Finalize the documentation commit and terminal summary.
 
 ## Next task
 
-Add a fetch result model exposing final URL/status/content type directly, then
-implement bounded seed-page link discovery with an explicit robots policy.
+Add an explicit robots policy and conservative rate scheduler before any multi-page
+network crawl orchestration. Browser inspection remains P2.
