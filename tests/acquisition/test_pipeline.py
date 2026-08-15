@@ -64,3 +64,15 @@ def test_non_swahili_and_dynamic_pages_are_not_stored(tmp_path):
     assert rejected.status == "language_rejected"
     assert dynamic.status == "unsupported"
     assert pipeline.store.list_manifest() == []
+
+
+def test_unsafe_declared_canonical_falls_back_to_final_public_url(tmp_path):
+    html = fixture("semantic_sw.html").replace(
+        "https://habari.example/elimu?utm_source=feed", "file:///etc/passwd"
+    )
+    result = AcquisitionPipeline(CorpusStore(tmp_path)).process_html(
+        "https://habari.example/original", html, retrieved_at=NOW
+    )
+
+    assert result.document is not None
+    assert result.document.canonical_url == "https://habari.example/original"

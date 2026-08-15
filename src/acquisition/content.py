@@ -70,8 +70,15 @@ def canonicalize_url(url: str) -> str:
     """Normalize URL identity without deleting content-bearing parameters."""
     parsed = urlsplit(url)
     scheme = parsed.scheme.lower()
+    if scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("Canonical URL must be an absolute HTTP(S) URL")
+    if parsed.username or parsed.password:
+        raise ValueError("Canonical URL must not contain credentials")
     hostname = (parsed.hostname or "").lower().rstrip(".")
-    port = parsed.port
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError("Canonical URL contains an invalid port") from exc
     netloc = hostname
     if port and not ((scheme == "http" and port == 80) or (scheme == "https" and port == 443)):
         netloc = f"{hostname}:{port}"

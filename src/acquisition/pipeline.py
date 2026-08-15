@@ -63,7 +63,10 @@ class AcquisitionPipeline:
             return IngestionResult("language_rejected", None, language.status.value)
 
         digest = content_hash(normalized)
-        canonical = canonicalize_url(inspection.canonical_url or final_url)
+        try:
+            canonical = canonicalize_url(inspection.canonical_url or final_url)
+        except ValueError:
+            canonical = canonicalize_url(final_url)
         timestamp = (
             (retrieved_at or datetime.now(timezone.utc)).astimezone(timezone.utc).isoformat()
         )

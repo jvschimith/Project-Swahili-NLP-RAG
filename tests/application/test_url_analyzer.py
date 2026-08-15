@@ -67,6 +67,36 @@ def test_fetch_accepts_bounded_html_response(monkeypatch):
     assert "Habari" in URLNewsAnalyzer().fetch_url("https://example.com/article")
 
 
+def test_fetch_result_preserves_final_response_metadata(monkeypatch):
+    monkeypatch.setattr(
+        "src.application.services.url_analyzer.socket.getaddrinfo",
+        lambda *_args, **_kwargs: [(2, 1, 6, "", ("93.184.216.34", 443))],
+    )
+    redirect = Mock(status_code=302, headers={"Location": "/final"})
+    response = Mock(
+        status_code=200,
+        headers={"Content-Type": "text/html; charset=utf-8"},
+        content=b"<html><p>Habari</p></html>",
+        encoding="utf-8",
+        apparent_encoding="utf-8",
+        text="<html><p>Habari</p></html>",
+    )
+    response.raise_for_status.return_value = None
+    monkeypatch.setattr(
+        "src.application.services.url_analyzer.requests.get",
+        Mock(side_effect=[redirect, response]),
+    )
+
+    result = URLNewsAnalyzer().fetch_result("https://example.com/start")
+
+    assert result is not None
+    assert result.requested_url == "https://example.com/start"
+    assert result.final_url == "https://example.com/final"
+    assert result.status_code == 200
+    assert result.content_type == "text/html; charset=utf-8"
+    assert result.retrieved_at.tzinfo is not None
+
+
 def test_extract_text_prefers_paragraphs_and_removes_boilerplate():
     html = """
     <html lang="sw"><body><header>Navigation</header><article>

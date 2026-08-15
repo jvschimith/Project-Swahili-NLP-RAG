@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from src.acquisition.content import (
     StaticArticleExtractor,
     canonicalize_url,
@@ -22,6 +24,15 @@ def test_canonicalization_removes_fragment_default_port_and_tracking_only():
         canonicalize_url("HTTPS://Example.COM:443/a?utm_source=x&id=7&fbclid=z#part")
         == "https://example.com/a?id=7"
     )
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["file:///etc/passwd", "https://user:secret@example.com/article", "https://example.com:bad"],
+)
+def test_canonicalization_rejects_unsafe_or_malformed_identity_urls(url):
+    with pytest.raises(ValueError):
+        canonicalize_url(url)
 
 
 def test_normalization_preserves_case_punctuation_and_deduplicates_paragraphs():

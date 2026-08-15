@@ -18,11 +18,17 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=Path("data/corpus"))
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
-    html = URLNewsAnalyzer().fetch_url(args.url)
-    if html is None:
+    fetched = URLNewsAnalyzer().fetch_result(args.url)
+    if fetched is None:
         parser.error("page could not be fetched under the public URL policy")
     pipeline = AcquisitionPipeline(CorpusStore(args.output))
-    result = pipeline.process_html(args.url, html, persist=not args.dry_run)
+    result = pipeline.process_html(
+        args.url,
+        fetched.html,
+        final_url=fetched.final_url,
+        retrieved_at=fetched.retrieved_at,
+        persist=not args.dry_run,
+    )
     print(
         json.dumps(
             {

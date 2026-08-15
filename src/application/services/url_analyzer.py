@@ -6,6 +6,8 @@ Fetch and analyze news from URLs.
 
 import ipaddress
 import socket
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from urllib.parse import urljoin, urlsplit
 
 import requests
@@ -13,6 +15,18 @@ from bs4 import BeautifulSoup
 from loguru import logger
 
 from src.application.services.text_processor import SwahiliTextProcessor
+
+
+@dataclass(frozen=True)
+class FetchResult:
+    """Bounded public fetch output with acquisition-relevant provenance."""
+
+    requested_url: str
+    final_url: str
+    status_code: int
+    content_type: str
+    html: str
+    retrieved_at: datetime
 
 
 class URLNewsAnalyzer:
@@ -59,11 +73,7 @@ class URLNewsAnalyzer:
             raise ValueError("Credentials in URLs are not supported")
 
         hostname = parsed.hostname.rstrip(".").lower()
-        if (
-            hostname == "localhost"
-            or hostname.endswith(".localhost")
-            or hostname.endswith(".local")
-        ):
+        if hostname == "localhost" or hostname.endswith((".localhost", ".local")):
             raise ValueError("Local network hostnames are not allowed")
 
         try:
@@ -92,6 +102,11 @@ class URLNewsAnalyzer:
         Returns:
             HTML content or None if failed
         """
+        result = self.fetch_result(url, timeout=timeout)
+        return result.html if result else None
+
+    def fetch_result(self, url: str, timeout: int = 10) -> FetchResult | None:
+        """Fetch HTML and preserve final-response metadata for provenance."""
         try:
             current_url = self.validate_public_url(url)
             for redirect_count in range(self.MAX_REDIRECTS + 1):
@@ -122,7 +137,14 @@ class URLNewsAnalyzer:
                 response.encoding = (
                     response.encoding or response.apparent_encoding or "utf-8"
                 )
-                return response.text
+                return FetchResult(
+                    requested_url=url,
+                    final_url=current_url,
+                    status_code=response.status_code,
+                    content_type=content_type,
+                    html=response.text,
+                    retrieved_at=datetime.now(timezone.utc),
+                )
             return None
         except (requests.RequestException, ValueError) as e:
             logger.error(f"Failed to fetch URL {url}: {e}")
@@ -158,7 +180,7 @@ class URLNewsAnalyzer:
             text = " ".join(line for line in lines if line)
 
             return text
-        except Exception as e:
+        except (TypeError, ValueError) as e:
             logger.error(f"Failed to extract text: {e}")
             return ""
 
