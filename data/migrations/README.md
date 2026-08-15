@@ -14,7 +14,7 @@ MAJOR.MINOR.PATCH
 - PATCH: Bug fixes
 ```
 
-## 📁 Estrutura
+## 📁 Structure
 
 ```
 migrations/
@@ -62,16 +62,16 @@ migrator.migrate_to("0.2.0")
 -- ============================================
 
 -- 1. Create new table
-CREATE TABLE IF NOT EXISTS nova_tabela (
+CREATE TABLE IF NOT EXISTS new_table (
     id INTEGER PRIMARY KEY,
     ...
 );
 
 -- 2. Add column
-ALTER TABLE terms ADD COLUMN nova_coluna TEXT;
+ALTER TABLE terms ADD COLUMN new_column TEXT;
 
 -- 3. Create index
-CREATE INDEX idx_nova_coluna ON terms(nova_coluna);
+CREATE INDEX idx_new_column ON terms(new_column);
 
 -- ============================================
 -- UPDATE VERSION
@@ -89,9 +89,9 @@ VALUES ('0.X.0', 'Migration description');
 
 -- Revert changes in reverse order
 
-DROP INDEX IF EXISTS idx_nova_coluna;
-ALTER TABLE terms DROP COLUMN nova_coluna;
-DROP TABLE IF EXISTS nova_tabela;
+DROP INDEX IF EXISTS idx_new_column;
+ALTER TABLE terms DROP COLUMN new_column;
+DROP TABLE IF EXISTS new_table;
 
 -- Update version
 DELETE FROM schema_version WHERE version = '0.X.0';

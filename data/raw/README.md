@@ -2,7 +2,7 @@
 
 This directory contains the **raw data** from external sources.
 
-## 📁 Estrutura
+## 📁 Structure
 
 ```
 raw/

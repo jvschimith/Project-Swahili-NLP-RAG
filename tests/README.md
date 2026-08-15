@@ -1,6 +1,6 @@
 # Unit Tests
 
-Comprehensive test suite for the Swahili NLP RAG project.
+Comprehensive test suite for Swahili Linguistic Intelligence.
 
 ## Test Structure
 

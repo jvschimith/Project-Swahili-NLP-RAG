@@ -2,7 +2,7 @@
 -- Migration: v0.1.0 - Initial Schema
 -- ============================================
 -- Date: 2026-02-05
--- Author: Swahili NLP RAG Team
+-- Author: Swahili Linguistic Intelligence project
 -- Description: Initial schema with the core Masakhane tables
 --              (POS, NER, News, Sentiment)
 

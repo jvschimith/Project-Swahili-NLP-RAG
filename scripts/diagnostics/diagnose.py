@@ -21,7 +21,7 @@ api_file = Path("src/web/api.py")
 if not api_file.exists():
     print(f"❌ Not in project root!")
     print(f"   Current: {cwd}")
-    print(f"   Please cd to: swahili-nlp-rag-en/")
+    print("   Please change to the repository root.")
     sys.exit(1)
 else:
     print(f"✅ In correct directory: {cwd}")

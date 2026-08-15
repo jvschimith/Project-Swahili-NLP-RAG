@@ -1071,7 +1071,7 @@ st.markdown("---")
 st.markdown(
     """
 <div style='text-align: center; color: #666;'>
-    <p>Swahili NLP RAG Dashboard | Powered by FastAPI & Streamlit</p>
+    <p>Swahili Linguistic Intelligence | Powered by FastAPI & Streamlit</p>
     <p>📚 16,600+ words | 🏛️ Bantu Classification | 😊 Sentiment Analysis</p>
 </div>
 """,

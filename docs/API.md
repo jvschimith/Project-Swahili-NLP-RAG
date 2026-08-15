@@ -1,6 +1,6 @@
 # REST API Documentation
 
-FastAPI REST API for Swahili NLP RAG.
+FastAPI REST API for Swahili Linguistic Intelligence.
 
 **Release baseline:** `v2.1.1-alpha`  
 **Release type:** internal/local alpha release
@@ -35,7 +35,7 @@ Root endpoint with API information.
 **Response:**
 ```json
 {
-  "message": "Swahili NLP RAG API",
+  "message": "Swahili Linguistic Intelligence API",
   "version": "v2.1.1-alpha",
   "docs": "/docs"
 }

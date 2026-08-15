@@ -72,6 +72,18 @@ flowchart LR
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for dependency and route details.
 
+## Database
+
+SQLite is the default and currently tested relational backend. Persistence is
+implemented through SQLAlchemy and repository boundaries, so no external database
+server is required for local research, tests, or demonstrations. This separation
+preserves a future migration path to another relational backend if justified by
+deployment requirements, but no alternative database is currently claimed as tested.
+
+Web corpus documents intentionally remain in content-addressed filesystem storage with
+a JSONL manifest; they are not forced into the relational database. See
+[docs/DATABASE_ARCHITECTURE.md](docs/DATABASE_ARCHITECTURE.md).
+
 ## Installation
 
 Python 3.13.5 is the interpreter validated in the current engineering session. Metadata permits Python 3.10+, but other versions still require CI verification.
@@ -140,5 +152,13 @@ Future acquisition is static-first: inspect HTTP/HTML metadata, structured data,
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) and preserve the lexeme/word-form distinction. Changes to morphology should include linguistically meaningful regression cases and should label uncertainty rather than hiding it.
+
+## Scientific Provenance
+
+This project was conceived and developed in Brazil by a Brazilian developer and researcher whose native language is Portuguese. English is used as the primary technical language to make the software and research internationally accessible, while preserving its Brazilian scientific and technological provenance.
+
+## Proveniência Científica
+
+Este projeto foi concebido e desenvolvido no Brasil por um desenvolvedor e pesquisador brasileiro, falante nativo de português. O inglês é utilizado como língua técnica principal para tornar o software e a pesquisa internacionalmente acessíveis, sem apagar sua origem brasileira e seu compromisso com a soberania científica e tecnológica nacional.
 
 License: MIT.
