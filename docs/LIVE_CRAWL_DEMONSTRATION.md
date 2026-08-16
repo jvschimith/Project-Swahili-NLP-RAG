@@ -79,19 +79,23 @@ are re-evaluated on every run and are not claimed to be permanently compatible.
 |---|---|---|---:|---:|---:|---:|---:|---:|---|
 | VOA Swahili | `https://www.voaswahili.com/` | Public Swahili news with ordinary category/article links | allowed | 3 | 1 | 27 | 2 | 1 | page budget exhausted |
 | DW Kiswahili | `https://www.dw.com/sw/` | Public Kiswahili news and feature publishing | allowed | 3 | 2 | 18 | 1 | 1 | page budget exhausted |
-| UN News Kiswahili | `https://news.un.org/sw/` | Public institutional reporting in Swahili | allowed | 3 | 1 | 34 | 2 | 1 | page budget exhausted |
+| UN News Kiswahili | `https://news.un.org/sw/` | Public institutional reporting in Swahili | allowed | 3 | 1 | 35 | 2 | 1 | page budget exhausted |
 
-The run discovered 305 canonical frontier URLs but attempted only 9. It completed 4,
-skipped 79 (including external-origin/depth exclusions), failed 5 acquisition attempts,
+The browser-enabled rerun discovered 305 canonical frontier URLs but attempted only 9. It completed 4,
+skipped 80 (including external-origin/depth exclusions), failed 5 acquisition attempts,
 stored 3 new artifacts, and detected 1 canonical-URL duplicate. No robots denial occurred.
 Two failures were explicit language rejections after UN language-selector links led to Arabic
 and Chinese pages; two VOA category pages and one DW video page lacked sufficient static
 article content.
 
-Browser visualization was unavailable in this WSL2 session. `DISPLAY=:0`,
-`WAYLAND_DISPLAY=wayland-0`, and WSL interoperability were present, but no `firefox`,
-`firefox.exe`, `wslview`, or `xdg-open` executable was on `PATH`. The terminal crawl
-continued normally without installing or invoking browser automation.
+The initial run found WSLg (`DISPLAY=:0`, `WAYLAND_DISPLAY=wayland-0`) but no browser on
+`PATH`. For the browser-enabled rerun, the official Mozilla Firefox 153.0.4 Linux tarball
+was downloaded to `/tmp`. Because system-wide package installation required an unavailable
+interactive sudo password, Ubuntu's `libasound2t64` package was extracted privately under
+`/tmp` and supplied through `LD_LIBRARY_PATH`. Firefox launched successfully through WSLg;
+the demo reported `Browser visualization: ENABLED`, identified Firefox, and opened each of
+the nine selected frontier URLs. This temporary installation made no repository or system
+package changes and used no browser automation.
 
 ## Relationship to existing components
 
