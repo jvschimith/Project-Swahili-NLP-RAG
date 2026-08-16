@@ -105,8 +105,16 @@ class URLNewsAnalyzer:
         result = self.fetch_result(url, timeout=timeout)
         return result.html if result else None
 
-    def fetch_result(self, url: str, timeout: int = 10) -> FetchResult | None:
+    def fetch_result(
+        self,
+        url: str,
+        timeout: int = 10,
+        *,
+        allowed_content_types: tuple[str, ...] | None = None,
+        accepted_status_codes: frozenset[int] = frozenset(),
+    ) -> FetchResult | None:
         """Fetch HTML and preserve final-response metadata for provenance."""
+        accepted_types = allowed_content_types or self.ALLOWED_CONTENT_TYPES
         try:
             current_url = self.validate_public_url(url)
             for redirect_count in range(self.MAX_REDIRECTS + 1):
@@ -127,10 +135,22 @@ class URLNewsAnalyzer:
                     )
                     continue
 
+                if response.status_code in accepted_status_codes:
+                    response.encoding = (
+                        response.encoding or response.apparent_encoding or "utf-8"
+                    )
+                    return FetchResult(
+                        requested_url=url,
+                        final_url=current_url,
+                        status_code=response.status_code,
+                        content_type=response.headers.get("Content-Type", "").lower(),
+                        html=response.text,
+                        retrieved_at=datetime.now(timezone.utc),
+                    )
                 response.raise_for_status()
                 content_type = response.headers.get("Content-Type", "").lower()
-                if not any(kind in content_type for kind in self.ALLOWED_CONTENT_TYPES):
-                    raise ValueError("URL did not return HTML content")
+                if not any(kind in content_type for kind in accepted_types):
+                    raise ValueError("URL returned an unsupported content type")
                 content = response.content
                 if len(content) > self.MAX_RESPONSE_BYTES:
                     raise ValueError("HTML response exceeds the size limit")

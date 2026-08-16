@@ -15,8 +15,9 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 Base = declarative_base()
 
@@ -37,15 +38,11 @@ class DBTerm(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
-    pos_records = relationship(
-        "DBPOS", back_populates="term", cascade="all, delete-orphan"
-    )
+    pos_records = relationship("DBPOS", back_populates="term", cascade="all, delete-orphan")
     sentiment_records = relationship(
         "DBSentiment", back_populates="term", cascade="all, delete-orphan"
     )
-    entity_records = relationship(
-        "DBEntity", back_populates="term", cascade="all, delete-orphan"
-    )
+    entity_records = relationship("DBEntity", back_populates="term", cascade="all, delete-orphan")
     dictionary_entry = relationship(
         "DBDictionary",
         back_populates="term",
@@ -158,3 +155,51 @@ class DBSchemaVersion(Base):
     version = Column(String(20), nullable=False, unique=True)
     applied_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     description = Column(Text)
+
+
+class DBCrawlJob(Base):  # type: ignore[valid-type,misc]
+    """Persistence model for the crawl-job aggregate root."""
+
+    __tablename__ = "crawl_jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    seeds_json: Mapped[str] = mapped_column(Text, nullable=False)
+    allowed_origins_json: Mapped[str] = mapped_column(Text, nullable=False)
+    max_pages: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_depth: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_failures: Mapped[int] = mapped_column(Integer, nullable=False)
+    per_origin_pages: Mapped[int] = mapped_column(Integer, nullable=False)
+    min_delay_seconds: Mapped[float] = mapped_column(Float, nullable=False)
+    user_agent: Mapped[str] = mapped_column(String(200), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    termination_reason: Mapped[str | None] = mapped_column(String(50))
+    pages_attempted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pages_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pages_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pages_skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class DBCrawlFrontier(Base):  # type: ignore[valid-type,misc]
+    """Persistence model for a URL entity within one crawl frontier."""
+
+    __tablename__ = "crawl_frontier"
+    __table_args__ = (
+        UniqueConstraint("job_id", "canonical_url", name="uq_crawl_frontier_job_url"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("crawl_jobs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    canonical_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    origin: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
+    parent_url: Mapped[str | None] = mapped_column(String(2048))
+    depth: Mapped[int] = mapped_column(Integer, nullable=False)
+    state: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    discovered_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    skip_reason: Mapped[str | None] = mapped_column(String(100))
+    error: Mapped[str | None] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
