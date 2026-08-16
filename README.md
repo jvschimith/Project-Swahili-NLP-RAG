@@ -84,6 +84,14 @@ Web corpus documents intentionally remain in content-addressed filesystem storag
 a JSONL manifest; they are not forced into the relational database. See
 [docs/DATABASE_ARCHITECTURE.md](docs/DATABASE_ARCHITECTURE.md).
 
+## Responsible crawl orchestration
+
+Responsible Crawl Orchestration v1 adds an origin-scoped, robots-aware, rate-limited,
+budgeted, persistent frontier above single-page acquisition. Interrupted crawl jobs can
+resume from SQLite checkpoints without blindly reacquiring completed pages. Corpus
+artifacts remain owned by Web Corpus Acquisition v1. See
+[docs/RESPONSIBLE_CRAWL_ORCHESTRATION.md](docs/RESPONSIBLE_CRAWL_ORCHESTRATION.md).
+
 ## Installation
 
 Python 3.13.5 is the interpreter validated in the current engineering session. Metadata permits Python 3.10+, but other versions still require CI verification.
