@@ -16,6 +16,7 @@ from src.infrastructure.database.models import DBCrawlFrontier, DBCrawlJob
 
 from .application import AcquisitionOutcome, RobotsResource
 from .domain import (
+    CandidatePriority,
     CrawlBudget,
     CrawlJob,
     CrawlRepository,
@@ -23,6 +24,7 @@ from .domain import (
     CrawlUrl,
     FrontierEntry,
     FrontierState,
+    ResourceKind,
     TerminationReason,
 )
 
@@ -102,7 +104,11 @@ class SqlAlchemyCrawlRepository(CrawlRepository):
                 DBCrawlFrontier.job_id == job_id,
                 DBCrawlFrontier.state == FrontierState.QUEUED.value,
             )
-            .order_by(DBCrawlFrontier.depth.asc(), DBCrawlFrontier.id.asc())
+            .order_by(
+                DBCrawlFrontier.depth.asc(),
+                DBCrawlFrontier.priority.desc(),
+                DBCrawlFrontier.id.asc(),
+            )
             .first()
         )
         return self._to_entry(row) if row else None
@@ -132,7 +138,7 @@ class SqlAlchemyCrawlRepository(CrawlRepository):
         return len(rows)
 
     def count_attempted_for_origin(self, job_id: str, origin: str) -> int:
-        return (
+        return int(
             self.session.query(DBCrawlFrontier)
             .filter(
                 DBCrawlFrontier.job_id == job_id,
@@ -180,6 +186,14 @@ class SqlAlchemyCrawlRepository(CrawlRepository):
             "skip_reason": entry.skip_reason,
             "error": entry.error,
             "attempts": entry.attempts,
+            "priority": int(entry.priority),
+            "resource_kind": entry.resource_kind.value,
+            "candidate_evidence_json": json.dumps(entry.candidate_evidence),
+            "acquisition_stage": entry.acquisition_stage,
+            "acquisition_reason": entry.acquisition_reason,
+            "artifact_id": entry.artifact_id,
+            "artifact_created": entry.artifact_created,
+            "duplicate_reason": entry.duplicate_reason,
         }
 
     @staticmethod
@@ -219,6 +233,14 @@ class SqlAlchemyCrawlRepository(CrawlRepository):
             skip_reason=row.skip_reason,
             error=row.error,
             attempts=row.attempts,
+            priority=CandidatePriority(row.priority),
+            resource_kind=ResourceKind(row.resource_kind),
+            candidate_evidence=tuple(json.loads(row.candidate_evidence_json)),
+            acquisition_stage=row.acquisition_stage,
+            acquisition_reason=row.acquisition_reason,
+            artifact_id=row.artifact_id,
+            artifact_created=row.artifact_created,
+            duplicate_reason=row.duplicate_reason,
         )
 
 
@@ -268,7 +290,13 @@ class WebAcquisitionAdapter:
     def acquire(self, url: str) -> AcquisitionOutcome:
         fetched = self.analyzer.fetch_result(url)
         if fetched is None:
-            return AcquisitionOutcome(False, url, reason="network_failure")
+            return AcquisitionOutcome(False, url, reason="network_failure", stage="fetch")
+        soup = BeautifulSoup(fetched.html, "html.parser")
+        links = tuple(
+            href
+            for node in soup.find_all("a", href=True)
+            if isinstance((href := node.get("href")), str)
+        )
         result = self.pipeline.process_html(
             url,
             fetched.html,
@@ -276,17 +304,43 @@ class WebAcquisitionAdapter:
             retrieved_at=fetched.retrieved_at,
         )
         if result.document is None:
-            return AcquisitionOutcome(False, fetched.final_url, reason=result.status)
-        soup = BeautifulSoup(fetched.html, "html.parser")
-        links = tuple(
-            href
-            for node in soup.find_all("a", href=True)
-            if isinstance((href := node.get("href")), str)
-        )
+            observation = result.observation
+            return AcquisitionOutcome(
+                False,
+                fetched.final_url,
+                reason=observation.reason.value if observation else result.status,
+                stage=observation.stage.value if observation else None,
+                details=observation_details(observation),
+                discovered_links=links,
+            )
         return AcquisitionOutcome(
             True,
             fetched.final_url,
             fetched.html,
             links,
             result.document.document_id,
+            reason=result.observation.reason.value if result.observation else "accepted",
+            stage=result.observation.stage.value if result.observation else "storage",
+            details=observation_details(result.observation),
+            artifact_created=result.status == "stored",
+            duplicate_reason=result.duplicate_reason,
         )
+
+
+def observation_details(observation) -> tuple[tuple[str, object], ...]:
+    if observation is None:
+        return ()
+    values = (
+        ("extraction_strategy", observation.extraction_strategy),
+        ("html_language", observation.html_language),
+        ("article_container", observation.article_container),
+        ("main_container", observation.main_container),
+        ("json_ld_article", observation.json_ld_article),
+        ("paragraph_count", observation.paragraph_count),
+        ("extracted_character_count", observation.extracted_character_count),
+        ("dynamic_signal", observation.dynamic_signal),
+        ("language_status", observation.language_status),
+        ("language_evidence_score", observation.language_evidence_score),
+        ("language_evidence", observation.language_evidence),
+    )
+    return tuple((key, value) for key, value in values if value is not None and value != ())

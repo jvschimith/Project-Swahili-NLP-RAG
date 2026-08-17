@@ -7,6 +7,7 @@ from typing import Protocol
 from urllib.parse import urljoin
 
 from .domain import (
+    CandidatePriority,
     CrawlBudget,
     CrawlJob,
     CrawlRepository,
@@ -14,6 +15,7 @@ from .domain import (
     CrawlUrl,
     FrontierEntry,
     FrontierState,
+    LinkEligibilityPolicy,
     RatePolicy,
     RobotsDecision,
     RobotsPolicy,
@@ -36,6 +38,10 @@ class AcquisitionOutcome:
     discovered_links: tuple[str, ...] = ()
     artifact_id: str | None = None
     reason: str | None = None
+    stage: str | None = None
+    details: tuple[tuple[str, object], ...] = ()
+    artifact_created: bool = False
+    duplicate_reason: str | None = None
 
 
 class UrlSafetyPort(Protocol):
@@ -186,6 +192,14 @@ class CrawlSnapshot:
     failure_limit: int
     max_depth: int
     skip_reasons: dict[str, int] = field(default_factory=dict)
+    eligible_candidates: int = 0
+    skipped_before_acquisition: int = 0
+    high_priority_candidates: int = 0
+    low_priority_candidates: int = 0
+    acquisition_rejections: int = 0
+    artifacts_created: int = 0
+    duplicates: int = 0
+    failure_reasons: dict[str, int] = field(default_factory=dict)
 
 
 class CrawlOrchestrator:
@@ -224,8 +238,23 @@ class CrawlOrchestrator:
         )
         self.repository.save_job(job)
         for seed in seeds:
-            entry = FrontierEntry(None, job.id, seed, 0)
-            entry.transition(FrontierState.QUEUED)
+            decision = LinkEligibilityPolicy.evaluate(seed)
+            entry = FrontierEntry(
+                None,
+                job.id,
+                seed,
+                0,
+                priority=decision.priority,
+                resource_kind=decision.resource_kind,
+                candidate_evidence=tuple(item.value for item in decision.evidence),
+            )
+            if decision.eligible:
+                entry.transition(FrontierState.QUEUED)
+            else:
+                if decision.reason is None:
+                    raise ValueError("Ineligible candidate must expose a skip reason")
+                entry.transition(FrontierState.SKIPPED, reason=decision.reason.value)
+                job.record_skipped()
             self.repository.add_entry(entry)
         job.start()
         self.repository.save_job(job)
@@ -299,25 +328,55 @@ class CrawlOrchestrator:
             return
         self.scheduler.wait(entry.url.origin, robots.crawl_delay, job.min_delay_seconds)
         outcome = self.acquisition.acquire(entry.url.value)
+        entry.acquisition_stage = outcome.stage
+        entry.acquisition_reason = outcome.reason
+        entry.artifact_id = outcome.artifact_id
+        entry.artifact_created = outcome.artifact_created
+        entry.duplicate_reason = outcome.duplicate_reason
         if not outcome.acquired:
             entry.transition(FrontierState.FAILED, reason=outcome.reason or "acquisition_failed")
             job.record_failed()
             self.repository.checkpoint(job, entry)
+            self._skip_redirect_alias(job, entry, outcome.final_url)
+            self._discover(job, entry, outcome.discovered_links, final_url=outcome.final_url)
+            self.repository.save_job(job)
             return
         entry.transition(FrontierState.COMPLETED)
         job.record_completed()
         self.repository.checkpoint(job, entry)
-        self._discover(job, entry, outcome.discovered_links)
+        self._skip_redirect_alias(job, entry, outcome.final_url)
+        self._discover(job, entry, outcome.discovered_links, final_url=outcome.final_url)
         self.repository.save_job(job)
 
-    def _discover(self, job: CrawlJob, parent: FrontierEntry, links: tuple[str, ...]) -> None:
+    def _discover(
+        self,
+        job: CrawlJob,
+        parent: FrontierEntry,
+        links: tuple[str, ...],
+        *,
+        final_url: str | None = None,
+    ) -> None:
+        try:
+            final_identity = CrawlUrl.parse(final_url).value if final_url else None
+        except ValueError:
+            final_identity = None
         for raw_link in links:
             try:
                 candidate = CrawlUrl.parse(urljoin(parent.url.value, raw_link))
             except ValueError:
                 continue
+            if candidate.value in {parent.url.value, final_identity}:
+                continue
+            decision = LinkEligibilityPolicy.evaluate(candidate)
             child = FrontierEntry(
-                None, job.id, candidate, parent.depth + 1, parent_url=parent.url.value
+                None,
+                job.id,
+                candidate,
+                parent.depth + 1,
+                parent_url=parent.url.value,
+                priority=decision.priority,
+                resource_kind=decision.resource_kind,
+                candidate_evidence=tuple(item.value for item in decision.evidence),
             )
             if candidate.origin not in job.allowed_origins:
                 child.transition(FrontierState.SKIPPED, reason=SkipReason.EXTERNAL_ORIGIN.value)
@@ -334,8 +393,30 @@ class CrawlOrchestrator:
                 if self.repository.add_entry(child):
                     job.record_skipped()
                 continue
+            if not decision.eligible:
+                if decision.reason is None:
+                    raise ValueError("Ineligible candidate must expose a skip reason")
+                child.transition(FrontierState.SKIPPED, reason=decision.reason.value)
+                if self.repository.add_entry(child):
+                    job.record_skipped()
+                continue
             child.transition(FrontierState.QUEUED)
             self.repository.add_entry(child)
+
+    def _skip_redirect_alias(
+        self, job: CrawlJob, processed: FrontierEntry, final_url: str
+    ) -> None:
+        try:
+            final_identity = CrawlUrl.parse(final_url).value
+        except ValueError:
+            return
+        if final_identity == processed.url.value:
+            return
+        for candidate in self.repository.list_entries(job.id):
+            if candidate.state == FrontierState.QUEUED and candidate.url.value == final_identity:
+                candidate.transition(FrontierState.SKIPPED, reason=SkipReason.DUPLICATE.value)
+                job.record_skipped()
+                self.repository.save_entry(candidate)
 
     def _skip(
         self,
@@ -353,10 +434,24 @@ class CrawlOrchestrator:
         entries = self.repository.list_entries(job_id)
         counts = {state: 0 for state in FrontierState}
         reasons: dict[str, int] = {}
+        failure_reasons: dict[str, int] = {}
         for entry in entries:
             counts[entry.state] += 1
             if entry.skip_reason:
                 reasons[entry.skip_reason] = reasons.get(entry.skip_reason, 0) + 1
+            if entry.error:
+                failure_reasons[entry.error] = failure_reasons.get(entry.error, 0) + 1
+        eligible = sum(
+            entry.skip_reason
+            not in {
+                SkipReason.UNSUPPORTED_RESOURCE_KIND.value,
+                SkipReason.COMPETING_LANGUAGE_PATH.value,
+                SkipReason.EXTERNAL_ORIGIN.value,
+                SkipReason.DEPTH_LIMIT.value,
+                SkipReason.UNSAFE_URL.value,
+            }
+            for entry in entries
+        )
         return CrawlSnapshot(
             job.id,
             job.status.value,
@@ -374,6 +469,15 @@ class CrawlOrchestrator:
             job.budget.max_failures,
             job.budget.max_depth,
             reasons,
+            eligible,
+            counts[FrontierState.SKIPPED],
+            sum(entry.priority == CandidatePriority.HIGH for entry in entries),
+            sum(entry.priority == CandidatePriority.LOW for entry in entries),
+            counts[FrontierState.FAILED],
+            sum(entry.artifact_created for entry in entries),
+            sum(entry.duplicate_reason is not None for entry in entries)
+            + reasons.get(SkipReason.DUPLICATE.value, 0),
+            failure_reasons,
         )
 
     def _require_job(self, job_id: str) -> CrawlJob:

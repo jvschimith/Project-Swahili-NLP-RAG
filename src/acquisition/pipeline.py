@@ -14,7 +14,13 @@ from .content import (
     validate_language,
 )
 from .inspector import PageInspector
-from .models import IngestionResult, WebDocument
+from .models import (
+    AcquisitionObservation,
+    AcquisitionReason,
+    AcquisitionStage,
+    IngestionResult,
+    WebDocument,
+)
 from .storage import CorpusStore
 
 ACQUISITION_VERSION = "web-corpus-v1"
@@ -43,7 +49,23 @@ class AcquisitionPipeline:
         if not extraction.raw_text:
             key = "dynamic_pages_detected" if inspection.likely_dynamic else "pages_failed"
             self.metrics[key] += 1
-            return IngestionResult("unsupported", None, extraction.strategy.value)
+            reason = (
+                AcquisitionReason.DYNAMIC_BROWSER_REQUIRED
+                if inspection.likely_dynamic
+                else AcquisitionReason.INSUFFICIENT_STATIC_CONTENT
+            )
+            return IngestionResult(
+                "unsupported",
+                None,
+                extraction.strategy.value,
+                observation=self._observation(
+                    inspection,
+                    extraction.strategy.value,
+                    AcquisitionStage.STATIC_EXTRACTION,
+                    reason,
+                    extracted_character_count=0,
+                ),
+            )
 
         raw_text = extraction.raw_text.strip()
         normalized = normalize_text(raw_text)
@@ -60,7 +82,26 @@ class AcquisitionPipeline:
                 else "non_swahili_rejected"
             )
             self.metrics[metric] += 1
-            return IngestionResult("language_rejected", None, language.status.value)
+            reason = (
+                AcquisitionReason.UNCERTAIN_LANGUAGE
+                if language.status.value == "uncertain"
+                else AcquisitionReason.LIKELY_NON_SWAHILI
+            )
+            return IngestionResult(
+                "language_rejected",
+                None,
+                language.status.value,
+                observation=self._observation(
+                    inspection,
+                    extraction.strategy.value,
+                    AcquisitionStage.LANGUAGE_VALIDATION,
+                    reason,
+                    extracted_character_count=len(normalized),
+                    language_status=language.status.value,
+                    language_evidence_score=language.confidence,
+                    language_evidence=language.evidence,
+                ),
+            )
 
         digest = content_hash(normalized)
         try:
@@ -99,10 +140,70 @@ class AcquisitionPipeline:
         self.metrics["documents_extracted"] += 1
         self.metrics["swahili_documents"] += 1
         if not persist:
-            return IngestionResult("dry_run", document)
+            return IngestionResult(
+                "dry_run",
+                document,
+                observation=self._observation(
+                    inspection,
+                    extraction.strategy.value,
+                    AcquisitionStage.STORAGE,
+                    AcquisitionReason.ACCEPTED,
+                    extracted_character_count=len(normalized),
+                    language_status=language.status.value,
+                    language_evidence_score=language.confidence,
+                    language_evidence=language.evidence,
+                ),
+            )
         if self.store is None:
             raise ValueError("A corpus store is required when persist=True")
         result = self.store.save(document)
         if result.duplicate_reason:
             self.metrics[f"duplicates_by_{result.duplicate_reason.split('_')[0]}"] += 1
-        return result
+        duplicate_reason = (
+            {
+                "canonical_url": AcquisitionReason.DUPLICATE_CANONICAL_URL,
+                "content_hash": AcquisitionReason.DUPLICATE_CONTENT,
+            }.get(result.duplicate_reason)
+            if result.duplicate_reason
+            else None
+        )
+        observation = self._observation(
+            inspection,
+            extraction.strategy.value,
+            AcquisitionStage.DEDUPLICATION if duplicate_reason else AcquisitionStage.STORAGE,
+            duplicate_reason or AcquisitionReason.ACCEPTED,
+            extracted_character_count=len(normalized),
+            language_status=language.status.value,
+            language_evidence_score=language.confidence,
+            language_evidence=language.evidence,
+        )
+        return IngestionResult(
+            result.status,
+            result.document,
+            result.duplicate_reason,
+            result.storage_path,
+            observation,
+        )
+
+    @staticmethod
+    def _observation(
+        inspection,
+        strategy: str,
+        stage: AcquisitionStage,
+        reason: AcquisitionReason,
+        **details,
+    ) -> AcquisitionObservation:
+        return AcquisitionObservation(
+            stage=stage,
+            reason=reason,
+            extraction_strategy=strategy,
+            html_language=inspection.html_language,
+            article_container=inspection.has_article,
+            main_container=inspection.has_main,
+            json_ld_article=bool(
+                PageInspector.ARTICLE_TYPES.intersection(inspection.json_ld_types)
+            ),
+            paragraph_count=inspection.paragraph_count,
+            dynamic_signal=inspection.likely_dynamic,
+            **details,
+        )

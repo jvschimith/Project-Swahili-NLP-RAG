@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -187,6 +188,7 @@ class DBCrawlFrontier(Base):  # type: ignore[valid-type,misc]
     __tablename__ = "crawl_frontier"
     __table_args__ = (
         UniqueConstraint("job_id", "canonical_url", name="uq_crawl_frontier_job_url"),
+        Index("ix_crawl_frontier_next", "job_id", "state", "depth", "priority", "id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -203,3 +205,11 @@ class DBCrawlFrontier(Base):  # type: ignore[valid-type,misc]
     skip_reason: Mapped[str | None] = mapped_column(String(100))
     error: Mapped[str | None] = mapped_column(Text)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
+    resource_kind: Mapped[str] = mapped_column(String(40), nullable=False, default="unknown")
+    candidate_evidence_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    acquisition_stage: Mapped[str | None] = mapped_column(String(50))
+    acquisition_reason: Mapped[str | None] = mapped_column(String(100))
+    artifact_id: Mapped[str | None] = mapped_column(String(100))
+    artifact_created: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    duplicate_reason: Mapped[str | None] = mapped_column(String(100))

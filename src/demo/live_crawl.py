@@ -36,6 +36,7 @@ from src.crawl.infrastructure import (
     SafeRobotsRetriever,
     SqlAlchemyCrawlRepository,
     SystemClock,
+    observation_details,
 )
 from src.infrastructure.database.models import Base
 
@@ -125,8 +126,14 @@ class TracedWebAcquisition:
         fetched = self.analyzer.fetch_result(url)
         trace.fetched = fetched
         if fetched is None:
-            return AcquisitionOutcome(False, url, reason="network_failure")
+            return AcquisitionOutcome(False, url, reason="network_failure", stage="fetch")
         trace.inspection = PageInspector.inspect_html(fetched.final_url, fetched.html)
+        soup = BeautifulSoup(fetched.html, "html.parser")
+        links = tuple(
+            href
+            for node in soup.find_all("a", href=True)
+            if isinstance((href := node.get("href")), str)
+        )
         result = self.pipeline.process_html(
             url,
             fetched.html,
@@ -134,20 +141,27 @@ class TracedWebAcquisition:
             retrieved_at=fetched.retrieved_at,
         )
         trace.ingestion = result
-        soup = BeautifulSoup(fetched.html, "html.parser")
-        links = tuple(
-            href
-            for node in soup.find_all("a", href=True)
-            if isinstance((href := node.get("href")), str)
-        )
         if result.document is None:
-            return AcquisitionOutcome(False, fetched.final_url, reason=result.status)
+            observation = result.observation
+            return AcquisitionOutcome(
+                False,
+                fetched.final_url,
+                reason=observation.reason.value if observation else result.status,
+                stage=observation.stage.value if observation else None,
+                details=observation_details(observation),
+                discovered_links=links,
+            )
         return AcquisitionOutcome(
             True,
             fetched.final_url,
             fetched.html,
             links,
             result.document.document_id,
+            reason=result.observation.reason.value if result.observation else "accepted",
+            stage=result.observation.stage.value if result.observation else "storage",
+            details=observation_details(result.observation),
+            artifact_created=result.status == "stored",
+            duplicate_reason=result.duplicate_reason,
         )
 
 
@@ -167,6 +181,13 @@ class SiteSummary:
     duplicates: int
     artifacts: int
     termination: str | None
+    eligible: int = 0
+    skipped_before_acquisition: int = 0
+    high_priority: int = 0
+    low_priority: int = 0
+    extraction_rejections: int = 0
+    depth_exclusions: int = 0
+    unsafe_exclusions: int = 0
 
 
 @dataclass
@@ -181,6 +202,7 @@ class LiveCrawlDemo:
     max_depth: int = MAX_DEPTH
     sleeper: Callable[[float], None] = time.sleep
     summaries: list[SiteSummary] = field(default_factory=list)
+    candidate_example_limit: int = 3
 
     def say(self, message: str = "") -> None:
         print(message, file=self.output, flush=True)
@@ -282,6 +304,7 @@ class LiveCrawlDemo:
             )
         else:
             self._print_acquisition(trace)
+        self._print_candidates(entry)
         self.say(
             f"\n[DISCOVERY / FRONTIER]\nURLs known: {snapshot.discovered}"
             f"\nQueued: {snapshot.queued}\nCompleted: {snapshot.completed}"
@@ -325,9 +348,55 @@ class LiveCrawlDemo:
                 f"\nDuplicate: {'yes — ' + result.duplicate_reason if result.duplicate_reason else 'no'}"
             )
         else:
-            detail = f" ({result.duplicate_reason})" if result.duplicate_reason else ""
+            observation = result.observation
+            self.say("\n[ACQUISITION RESULT]\nStatus: REJECTED")
+            if observation:
+                self.say(f"Stage: {observation.stage.value}\nReason: {observation.reason.value}")
+                if observation.extraction_strategy:
+                    self.say(f"Strategy: {observation.extraction_strategy}")
+                if observation.html_language:
+                    self.say(f"HTML language: {observation.html_language}")
+                if observation.paragraph_count is not None:
+                    self.say(f"Paragraphs: {observation.paragraph_count}")
+                if observation.extracted_character_count is not None:
+                    self.say(f"Characters extracted: {observation.extracted_character_count}")
+                if observation.language_evidence_score is not None:
+                    self.say(
+                        "Language evidence score (heuristic, not a probability): "
+                        f"{observation.language_evidence_score}"
+                    )
+                if observation.dynamic_signal is not None:
+                    self.say(f"Dynamic evidence: {'yes' if observation.dynamic_signal else 'no'}")
+            self.say("Artifact: none")
+
+    def _print_candidates(self, parent: FrontierEntry) -> None:
+        children = [
+            item
+            for item in self.repository.list_entries(parent.job_id)
+            if item.parent_url == parent.url.value
+        ]
+        if not children:
+            return
+        eligible = sum(item.state.value != "skipped" for item in children)
+        self.say(
+            f"\n[CANDIDATES]\nDiscovered from page: {len(children)}"
+            f"\nEligible/queued: {eligible}\nSkipped before acquisition: {len(children) - eligible}"
+        )
+        for item in children[: self.candidate_example_limit]:
+            decision = "SKIPPED" if item.state.value == "skipped" else "ELIGIBLE"
             self.say(
-                f"\n[LANGUAGE / CORPUS]\nResult: {result.status}{detail}; artifact not created."
+                f"\n[CANDIDATE]\nURL: {item.url.value}\nResource kind: {item.resource_kind.value}"
+                f"\nDecision: {decision}\nPriority: {item.priority.name}"
+                f"\nEvidence: {', '.join(item.candidate_evidence) or 'neutral URL path'}"
+            )
+            if item.skip_reason:
+                self.say(f"Reason: {item.skip_reason}\n→ crawl budget preserved")
+            else:
+                self.say("→ queued")
+        if len(children) > self.candidate_example_limit:
+            self.say(
+                f"Candidate examples limited to {self.candidate_example_limit}; "
+                f"{len(children) - self.candidate_example_limit} omitted."
             )
 
     def _site_metrics(self, name, origin, job_id, snapshot, entries) -> SiteSummary:
@@ -349,9 +418,17 @@ class LiveCrawlDemo:
             ),
             snapshot.skip_reasons.get("external_origin", 0),
             sum(result.status == "language_rejected" for result in results),
-            sum(result.status == "duplicate" for result in results),
+            snapshot.duplicates,
             sum(result.status == "stored" for result in results),
             snapshot.termination_reason,
+            snapshot.eligible_candidates,
+            snapshot.skipped_before_acquisition,
+            snapshot.high_priority_candidates,
+            snapshot.low_priority_candidates,
+            snapshot.failure_reasons.get("insufficient_static_content", 0)
+            + snapshot.failure_reasons.get("dynamic_browser_required", 0),
+            snapshot.skip_reasons.get("depth_limit", 0),
+            snapshot.skip_reasons.get("unsafe_url", 0),
         )
 
     def _print_site_summary(self, item: SiteSummary) -> None:
@@ -363,6 +440,11 @@ class LiveCrawlDemo:
             f"\nRobots denied: {item.robots_denied}\nDuplicates: {item.duplicates}"
             f"\nExternal-origin exclusions: {item.external_exclusions}"
             f"\nLanguage rejections: {item.language_rejections}"
+            f"\nEligible candidates: {item.eligible}"
+            f"\nSkipped before acquisition: {item.skipped_before_acquisition}"
+            f"\nHigh-priority candidates: {item.high_priority}"
+            f"\nLow-priority candidates: {item.low_priority}"
+            f"\nStatic/extraction rejections: {item.extraction_rejections}"
             f"\nCorpus artifacts: {item.artifacts}\nTermination reason: {item.termination}"
         )
 

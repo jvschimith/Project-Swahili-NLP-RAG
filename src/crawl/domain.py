@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from enum import Enum
+from enum import Enum, IntEnum
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
@@ -46,6 +46,164 @@ class SkipReason(str, Enum):
     UNSUPPORTED_SCHEME = "unsupported_scheme"
     DUPLICATE = "duplicate"
     PER_ORIGIN_LIMIT = "per_origin_limit"
+    UNSUPPORTED_RESOURCE_KIND = "unsupported_resource_kind"
+    COMPETING_LANGUAGE_PATH = "competing_language_path"
+
+
+class CandidatePriority(IntEnum):
+    """Durable ordering value; it never grants permission to fetch a URL."""
+
+    LOW = 10
+    NORMAL = 50
+    HIGH = 90
+
+
+class ResourceKind(str, Enum):
+    ARTICLE = "article"
+    SECTION = "section"
+    VIDEO = "video"
+    AUDIO = "audio"
+    UNSUPPORTED_FILE = "unsupported_file"
+    UNKNOWN = "unknown"
+
+
+class CandidateEvidence(str, Enum):
+    EXPECTED_LANGUAGE_PATH = "expected_language_path"
+    COMPETING_LANGUAGE_PATH = "competing_language_path"
+    ARTICLE_LIKE_PATH = "article_like_path"
+    DATE_LIKE_PATH = "date_like_path"
+    CATEGORY_LIKE_PATH = "category_like_path"
+    VIDEO_LIKE_PATH = "video_like_path"
+    AUDIO_LIKE_PATH = "audio_like_path"
+    UNSUPPORTED_RESOURCE = "unsupported_resource_kind"
+
+
+@dataclass(frozen=True)
+class CandidateDecision:
+    """Explain whether a URL is worth queueing, without accepting its content."""
+
+    eligible: bool
+    priority: CandidatePriority
+    resource_kind: ResourceKind
+    evidence: tuple[CandidateEvidence, ...] = ()
+    reason: SkipReason | None = None
+
+
+class LinkEligibilityPolicy:
+    """Conservative, site-neutral URL evidence for bounded frontier selection."""
+
+    _TARGET_SEGMENTS = frozenset({"sw", "swahili", "kiswahili"})
+    # Deliberately small: only clear language-selector route markers seen commonly.
+    _COMPETING_SEGMENTS = frozenset({"ar", "arabic", "zh", "chinese", "en", "english"})
+    _SECTION_SEGMENTS = frozenset(
+        {"category", "categories", "section", "sections", "tag", "tags", "author", "archive"}
+    )
+    _VIDEO_SEGMENTS = frozenset({"video", "videos", "vidio", "watch", "player", "embed"})
+    _AUDIO_SEGMENTS = frozenset({"audio", "podcast", "podcasts", "sauti"})
+    _NON_CORPUS_SEGMENTS = frozenset({"login", "signin", "account", "search", "share"})
+    _UNSUPPORTED_SUFFIXES = frozenset(
+        {
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".webp",
+            ".svg",
+            ".mp3",
+            ".wav",
+            ".ogg",
+            ".mp4",
+            ".webm",
+            ".avi",
+            ".pdf",
+            ".css",
+            ".js",
+            ".xml",
+            ".rss",
+            ".atom",
+            ".zip",
+        }
+    )
+
+    @classmethod
+    def evaluate(cls, url: CrawlUrl) -> CandidateDecision:
+        import re
+
+        parsed = urlsplit(url.value)
+        path = parsed.path.lower()
+        segments = tuple(segment for segment in path.split("/") if segment)
+        tokens = tuple(re.findall(r"[a-z]+", path))
+        evidence: list[CandidateEvidence] = []
+        if any(path.endswith(suffix) for suffix in cls._UNSUPPORTED_SUFFIXES):
+            return CandidateDecision(
+                False,
+                CandidatePriority.LOW,
+                ResourceKind.UNSUPPORTED_FILE,
+                (CandidateEvidence.UNSUPPORTED_RESOURCE,),
+                SkipReason.UNSUPPORTED_RESOURCE_KIND,
+            )
+        if any(segment in cls._COMPETING_SEGMENTS for segment in segments):
+            return CandidateDecision(
+                False,
+                CandidatePriority.LOW,
+                ResourceKind.UNKNOWN,
+                (CandidateEvidence.COMPETING_LANGUAGE_PATH,),
+                SkipReason.COMPETING_LANGUAGE_PATH,
+            )
+        score = int(CandidatePriority.NORMAL)
+        if any(segment in cls._TARGET_SEGMENTS for segment in segments):
+            evidence.append(CandidateEvidence.EXPECTED_LANGUAGE_PATH)
+            score += 10
+        date_like = bool(re.search(r"/(?:19|20)\d{2}/(?:0?[1-9]|1[0-2])(?:/|$)", path))
+        editorial_id = bool(re.search(r"/(?:a-\d+|a/.+\d+\.html)(?:/|$)", path))
+        article_like = date_like or editorial_id or any(
+            token in {"article", "articles", "story", "stories"} for token in tokens
+        )
+        if article_like:
+            evidence.append(CandidateEvidence.ARTICLE_LIKE_PATH)
+            score += 20
+        if date_like:
+            evidence.append(CandidateEvidence.DATE_LIKE_PATH)
+            score += 10
+        category_like = any(
+            segment in cls._SECTION_SEGMENTS or segment in cls._NON_CORPUS_SEGMENTS
+            for segment in segments
+        )
+        if category_like:
+            evidence.append(CandidateEvidence.CATEGORY_LIKE_PATH)
+            score -= 30
+        query_values = {
+            item.lower() for pair in parse_qsl(parsed.query) for item in pair if isinstance(item, str)
+        }
+        video_like = any(token in cls._VIDEO_SEGMENTS for token in tokens) or bool(
+            {"video", "videos", "vidio"}.intersection(query_values)
+        )
+        if video_like:
+            evidence.append(CandidateEvidence.VIDEO_LIKE_PATH)
+            score -= 30
+        audio_like = any(token in cls._AUDIO_SEGMENTS for token in tokens)
+        if audio_like:
+            evidence.append(CandidateEvidence.AUDIO_LIKE_PATH)
+            score -= 30
+        kind = (
+            ResourceKind.VIDEO
+            if video_like
+            else (
+                ResourceKind.AUDIO
+                if audio_like
+                else (
+                    ResourceKind.SECTION
+                    if category_like
+                    else ResourceKind.ARTICLE if article_like else ResourceKind.UNKNOWN
+                )
+            )
+        )
+        priority = (
+            CandidatePriority.HIGH
+            if score >= 70
+            else CandidatePriority.LOW if score < 50 else CandidatePriority.NORMAL
+        )
+        return CandidateDecision(True, priority, kind, tuple(evidence))
 
 
 @dataclass(frozen=True)
@@ -133,6 +291,14 @@ class FrontierEntry:
     skip_reason: str | None = None
     error: str | None = None
     attempts: int = 0
+    priority: CandidatePriority = CandidatePriority.NORMAL
+    resource_kind: ResourceKind = ResourceKind.UNKNOWN
+    candidate_evidence: tuple[str, ...] = ()
+    acquisition_stage: str | None = None
+    acquisition_reason: str | None = None
+    artifact_id: str | None = None
+    artifact_created: bool = False
+    duplicate_reason: str | None = None
 
     def transition(
         self, target: FrontierState, *, reason: str | None = None, now: datetime | None = None
