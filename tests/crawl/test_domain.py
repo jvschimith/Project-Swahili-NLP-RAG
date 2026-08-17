@@ -3,15 +3,106 @@ from datetime import datetime, timezone
 import pytest
 
 from src.crawl.domain import (
+    CandidateEvidence,
+    CandidatePriority,
     CrawlBudget,
     CrawlJob,
     CrawlStatus,
     CrawlUrl,
     FrontierEntry,
     FrontierState,
+    LinkEligibilityPolicy,
     RatePolicy,
+    ResourceKind,
     TerminationReason,
 )
+
+
+@pytest.mark.parametrize(
+    ("url", "eligible", "priority", "kind", "evidence"),
+    [
+        (
+            "https://example.org/sw/news/2026/08/report",
+            True,
+            CandidatePriority.HIGH,
+            ResourceKind.ARTICLE,
+            CandidateEvidence.EXPECTED_LANGUAGE_PATH,
+        ),
+        ("https://example.org/report", True, CandidatePriority.NORMAL, ResourceKind.UNKNOWN, None),
+        (
+            "https://example.org/sw/topic",
+            True,
+            CandidatePriority.NORMAL,
+            ResourceKind.UNKNOWN,
+            CandidateEvidence.EXPECTED_LANGUAGE_PATH,
+        ),
+        (
+            "https://example.org/ar/article",
+            False,
+            CandidatePriority.LOW,
+            ResourceKind.UNKNOWN,
+            CandidateEvidence.COMPETING_LANGUAGE_PATH,
+        ),
+        (
+            "https://example.org/category/world",
+            True,
+            CandidatePriority.LOW,
+            ResourceKind.SECTION,
+            CandidateEvidence.CATEGORY_LIKE_PATH,
+        ),
+        (
+            "https://example.org/video/report",
+            True,
+            CandidatePriority.LOW,
+            ResourceKind.VIDEO,
+            CandidateEvidence.VIDEO_LIKE_PATH,
+        ),
+        (
+            "https://example.org/embed/player/Article/123?type=video",
+            True,
+            CandidatePriority.LOW,
+            ResourceKind.VIDEO,
+            CandidateEvidence.VIDEO_LIKE_PATH,
+        ),
+        (
+            "https://example.org/sw/vidio-zetu/s-123",
+            True,
+            CandidatePriority.LOW,
+            ResourceKind.VIDEO,
+            CandidateEvidence.VIDEO_LIKE_PATH,
+        ),
+        (
+            "https://example.org/sw/sauti-zetu/s-123",
+            True,
+            CandidatePriority.LOW,
+            ResourceKind.AUDIO,
+            CandidateEvidence.AUDIO_LIKE_PATH,
+        ),
+        (
+            "https://example.org/sw/editorial-title/a-123456",
+            True,
+            CandidatePriority.HIGH,
+            ResourceKind.ARTICLE,
+            CandidateEvidence.ARTICLE_LIKE_PATH,
+        ),
+        (
+            "https://example.org/assets/report.pdf",
+            False,
+            CandidatePriority.LOW,
+            ResourceKind.UNSUPPORTED_FILE,
+            CandidateEvidence.UNSUPPORTED_RESOURCE,
+        ),
+    ],
+)
+def test_link_eligibility_is_explainable_and_conservative(url, eligible, priority, kind, evidence):
+    decision = LinkEligibilityPolicy.evaluate(CrawlUrl.parse(url))
+
+    assert decision.eligible is eligible
+    assert decision.priority == priority
+    assert decision.resource_kind == kind
+    if evidence is not None:
+        assert evidence in decision.evidence
+
 
 NOW = datetime(2026, 8, 15, tzinfo=timezone.utc)
 

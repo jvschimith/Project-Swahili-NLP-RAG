@@ -34,13 +34,14 @@ HTML = """
 
 
 class FakeAnalyzer:
-    def __init__(self, fail: bool = False):
+    def __init__(self, fail: bool = False, html: str = HTML):
         self.fail = fail
+        self.html = html
 
     def fetch_result(self, url, **_options):
         if self.fail:
             return None
-        return FetchResult(url, url, 200, "text/html", HTML, datetime.now(timezone.utc))
+        return FetchResult(url, url, 200, "text/html", self.html, datetime.now(timezone.utc))
 
 
 class AllowSafety:
@@ -77,14 +78,14 @@ class FakeBrowser:
         return True
 
 
-def make_demo(tmp_path, *, fail=False, delay=0):
+def make_demo(tmp_path, *, fail=False, delay=0, html=HTML, max_depth=0):
     engine = create_engine("sqlite:///:memory:")
     event.listen(
         engine, "connect", lambda connection, _: connection.execute("PRAGMA foreign_keys=ON")
     )
     Base.metadata.create_all(engine)
     repository = SqlAlchemyCrawlRepository(Session(engine))
-    analyzer = FakeAnalyzer(fail)
+    analyzer = FakeAnalyzer(fail, html)
     acquisition = TracedWebAcquisition(
         analyzer, AcquisitionPipeline(CorpusStore(tmp_path / "corpus"))
     )
@@ -105,7 +106,7 @@ def make_demo(tmp_path, *, fail=False, delay=0):
         io.StringIO(),
         delay,
         1,
-        0,
+        max_depth,
         pauses.append,
     )
     return demo, browser, pauses
@@ -154,3 +155,35 @@ def test_crawl_failures_are_presented_without_crashing_later_sites(tmp_path):
     assert [item.failed for item in summaries] == [1, 1, 1]
     assert len(browser.urls) == 3
     assert "Network acquisition failed" in demo.output.getvalue()
+
+
+def test_candidate_examples_are_bounded_and_render_decisions(tmp_path):
+    html = HTML.replace(
+        "</article>",
+        "</article><a href='/ar/article'>Arabic</a>"
+        "<a href='/sw/news/2026/08/report'>Report</a>"
+        "<a href='/category/world'>World</a>"
+        "<a href='/image.jpg'>Image</a>",
+    )
+    demo, _, _ = make_demo(tmp_path, html=html, max_depth=1)
+
+    summaries = demo.run(SITES)
+
+    terminal = demo.output.getvalue()
+    assert "[CANDIDATES]" in terminal
+    assert "Reason: competing_language_path" in terminal
+    assert "Priority: HIGH" in terminal
+    assert "Candidate examples limited to 3" in terminal
+    assert all(item.skipped_before_acquisition == 2 for item in summaries)
+
+
+def test_structured_static_rejection_is_educational(tmp_path):
+    demo, _, _ = make_demo(tmp_path, html="<html><main><p>Short.</p></main></html>")
+
+    summaries = demo.run(SITES)
+
+    terminal = demo.output.getvalue()
+    assert "Status: REJECTED" in terminal
+    assert "Stage: static_extraction" in terminal
+    assert "Reason: insufficient_static_content" in terminal
+    assert all(item.extraction_rejections == 1 for item in summaries)

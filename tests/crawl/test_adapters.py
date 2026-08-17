@@ -51,6 +51,43 @@ def test_acquisition_adapter_delegates_storage_deduplication(tmp_path):
     second = adapter.acquire(url)
 
     assert first.acquired and second.acquired
+    assert first.artifact_created and not second.artifact_created
+    assert first.reason == "accepted"
+    assert second.reason == "duplicate_canonical_url"
+    assert second.duplicate_reason == "canonical_url"
+    assert dict(second.details)["language_evidence_score"] > 0
     assert first.artifact_id == second.artifact_id
     assert len(store.list_manifest()) == 1
     assert analyzer.calls == [(url, {}), (url, {})]
+
+
+def test_acquisition_adapter_preserves_rejection_stage_and_evidence(tmp_path):
+    html = (FIXTURES / "english_fake_sw.html").read_text(encoding="utf-8")
+    url = "https://example.org/english-article"
+    adapter = WebAcquisitionAdapter(
+        FakeAnalyzer(fetched(url, html)), AcquisitionPipeline(CorpusStore(tmp_path))
+    )
+
+    outcome = adapter.acquire(url)
+
+    assert not outcome.acquired
+    assert outcome.stage == "language_validation"
+    assert outcome.reason == "likely_non_swahili"
+    details = dict(outcome.details)
+    assert details["html_language"] == "sw"
+    assert details["paragraph_count"] >= 2
+    assert details["language_evidence_score"] >= 0
+
+
+def test_acquisition_adapter_reports_network_failure_without_generic_exception(tmp_path):
+    class FailedAnalyzer:
+        def fetch_result(self, _url):
+            return None
+
+    outcome = WebAcquisitionAdapter(
+        FailedAnalyzer(), AcquisitionPipeline(CorpusStore(tmp_path))
+    ).acquire("https://example.org/sw/news/article")
+
+    assert not outcome.acquired
+    assert outcome.stage == "fetch"
+    assert outcome.reason == "network_failure"

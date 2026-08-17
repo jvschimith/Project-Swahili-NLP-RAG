@@ -51,7 +51,9 @@ class MemoryRepository(CrawlRepository):
         items = [
             item for item in self.entries.get(job_id, []) if item.state == FrontierState.QUEUED
         ]
-        return min(items, key=lambda item: (item.depth, item.id or 0), default=None)
+        return min(
+            items, key=lambda item: (item.depth, -int(item.priority), item.id or 0), default=None
+        )
 
     def list_entries(self, job_id):
         return list(self.entries.get(job_id, []))
@@ -267,3 +269,161 @@ def test_invalid_resume_and_completed_to_queued_are_forbidden():
     entry.transition(FrontierState.COMPLETED)
     with pytest.raises(ValueError):
         entry.transition(FrontierState.QUEUED)
+
+
+def test_candidate_priority_orders_articles_before_sections_at_same_depth():
+    pages = {
+        "https://example.com/": AcquisitionOutcome(
+            True,
+            "https://example.com/",
+            discovered_links=("/category/world", "/sw/news/2026/08/report"),
+        ),
+        "https://example.com/category/world": AcquisitionOutcome(
+            True, "https://example.com/category/world"
+        ),
+        "https://example.com/sw/news/2026/08/report": AcquisitionOutcome(
+            True, "https://example.com/sw/news/2026/08/report"
+        ),
+    }
+    orchestrator, _, _, _, acquisition = build(pages)
+    job = orchestrator.start_crawl(["https://example.com/"], CrawlBudget(3, 1, 3, 3))
+
+    snapshot = orchestrator.run(job.id)
+
+    assert acquisition.calls == [
+        "https://example.com/",
+        "https://example.com/sw/news/2026/08/report",
+        "https://example.com/category/world",
+    ]
+    assert snapshot.high_priority_candidates == 1
+    assert snapshot.low_priority_candidates == 1
+
+
+def test_candidate_eligibility_skips_competing_language_and_files_before_acquisition():
+    pages = {
+        "https://example.com/sw/": AcquisitionOutcome(
+            True,
+            "https://example.com/sw/",
+            discovered_links=("../ar/article", "photo.jpg", "./news/story?utm_source=feed"),
+        ),
+        "https://example.com/sw/news/story": AcquisitionOutcome(
+            True, "https://example.com/sw/news/story"
+        ),
+    }
+    orchestrator, repository, _, _, acquisition = build(pages)
+    job = orchestrator.start_crawl(["https://example.com/sw/"], CrawlBudget(4, 1, 4, 4))
+
+    snapshot = orchestrator.run(job.id)
+
+    assert acquisition.calls == ["https://example.com/sw/", "https://example.com/sw/news/story"]
+    assert snapshot.skip_reasons == {
+        "competing_language_path": 1,
+        "unsupported_resource_kind": 1,
+    }
+    assert snapshot.skipped_before_acquisition == 2
+    assert len(repository.list_entries(job.id)) == 4
+
+
+def test_priority_never_bypasses_robots_scope_or_safety():
+    pages = {
+        "https://example.com/": AcquisitionOutcome(
+            True,
+            "https://example.com/",
+            discovered_links=(
+                "/sw/news/2026/08/denied",
+                "https://outside.example/sw/news/article",
+                "/sw/news/unsafe/article",
+            ),
+        )
+    }
+    robots = {
+        "https://example.com": RobotsResource(
+            "available", "User-agent: *\nDisallow: /sw/news/2026/08/denied\n"
+        )
+    }
+    orchestrator, _, _, _, acquisition = build(pages, robots)
+    job = orchestrator.start_crawl(["https://example.com/"], CrawlBudget(5, 1, 5, 5))
+
+    result = orchestrator.run(job.id)
+
+    assert acquisition.calls == ["https://example.com/"]
+    assert result.skipped == 3
+
+
+def test_redirect_final_url_is_not_queued_as_a_duplicate_candidate():
+    pages = {
+        "https://example.com/sw/": AcquisitionOutcome(
+            True,
+            "https://example.com/sw/home",
+            discovered_links=("/sw/home", "/sw/news/article"),
+        ),
+        "https://example.com/sw/news/article": AcquisitionOutcome(
+            True, "https://example.com/sw/news/article"
+        ),
+    }
+    orchestrator, repository, _, _, acquisition = build(pages)
+    job = orchestrator.start_crawl(["https://example.com/sw/"], CrawlBudget(3, 1, 3, 3))
+
+    orchestrator.run(job.id)
+
+    assert acquisition.calls == ["https://example.com/sw/", "https://example.com/sw/news/article"]
+    assert all(
+        entry.url.value != "https://example.com/sw/home"
+        for entry in repository.list_entries(job.id)
+    )
+
+
+def test_redirect_alias_already_in_frontier_is_skipped_before_duplicate_acquisition():
+    pages = {
+        "https://example.com/sw/": AcquisitionOutcome(
+            True,
+            "https://example.com/sw/",
+            discovered_links=("/a/123.html", "/a/full-title/123.html", "/a/next/456.html"),
+        ),
+        "https://example.com/a/123.html": AcquisitionOutcome(
+            True,
+            "https://example.com/a/full-title/123.html",
+        ),
+        "https://example.com/a/next/456.html": AcquisitionOutcome(
+            True,
+            "https://example.com/a/next/456.html",
+        ),
+    }
+    orchestrator, _, _, _, acquisition = build(pages)
+    job = orchestrator.start_crawl(["https://example.com/sw/"], CrawlBudget(3, 1, 3, 3))
+
+    snapshot = orchestrator.run(job.id)
+
+    assert acquisition.calls == [
+        "https://example.com/sw/",
+        "https://example.com/a/123.html",
+        "https://example.com/a/next/456.html",
+    ]
+    assert snapshot.skip_reasons["duplicate"] == 1
+    assert snapshot.duplicates == 1
+
+
+def test_rejected_fetched_page_can_discover_links_without_accepting_content():
+    pages = {
+        "https://example.com/sw/": AcquisitionOutcome(
+            False,
+            "https://example.com/sw/",
+            discovered_links=("/sw/story/2026/08/article",),
+            reason="insufficient_static_content",
+            stage="static_extraction",
+        ),
+        "https://example.com/sw/story/2026/08/article": AcquisitionOutcome(
+            True, "https://example.com/sw/story/2026/08/article"
+        ),
+    }
+    orchestrator, _, _, _, acquisition = build(pages)
+    job = orchestrator.start_crawl(["https://example.com/sw/"], CrawlBudget(3, 1, 3, 3))
+
+    snapshot = orchestrator.run(job.id)
+
+    assert acquisition.calls == [
+        "https://example.com/sw/",
+        "https://example.com/sw/story/2026/08/article",
+    ]
+    assert snapshot.failed == 1
+    assert snapshot.completed == 1
