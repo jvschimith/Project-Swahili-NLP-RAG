@@ -156,8 +156,10 @@ class LinkEligibilityPolicy:
             score += 10
         date_like = bool(re.search(r"/(?:19|20)\d{2}/(?:0?[1-9]|1[0-2])(?:/|$)", path))
         editorial_id = bool(re.search(r"/(?:a-\d+|a/.+\d+\.html)(?:/|$)", path))
-        article_like = date_like or editorial_id or any(
-            token in {"article", "articles", "story", "stories"} for token in tokens
+        article_like = (
+            date_like
+            or editorial_id
+            or any(token in {"article", "articles", "story", "stories"} for token in tokens)
         )
         if article_like:
             evidence.append(CandidateEvidence.ARTICLE_LIKE_PATH)
@@ -173,7 +175,10 @@ class LinkEligibilityPolicy:
             evidence.append(CandidateEvidence.CATEGORY_LIKE_PATH)
             score -= 30
         query_values = {
-            item.lower() for pair in parse_qsl(parsed.query) for item in pair if isinstance(item, str)
+            item.lower()
+            for pair in parse_qsl(parsed.query)
+            for item in pair
+            if isinstance(item, str)
         }
         video_like = any(token in cls._VIDEO_SEGMENTS for token in tokens) or bool(
             {"video", "videos", "vidio"}.intersection(query_values)
@@ -299,6 +304,8 @@ class FrontierEntry:
     artifact_id: str | None = None
     artifact_created: bool = False
     duplicate_reason: str | None = None
+    final_url: str | None = None
+    acquisition_details: tuple[tuple[str, object], ...] = ()
 
     def transition(
         self, target: FrontierState, *, reason: str | None = None, now: datetime | None = None

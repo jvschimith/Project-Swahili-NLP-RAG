@@ -194,6 +194,8 @@ class SqlAlchemyCrawlRepository(CrawlRepository):
             "artifact_id": entry.artifact_id,
             "artifact_created": entry.artifact_created,
             "duplicate_reason": entry.duplicate_reason,
+            "final_url": entry.final_url,
+            "acquisition_details_json": json.dumps(entry.acquisition_details),
         }
 
     @staticmethod
@@ -241,6 +243,10 @@ class SqlAlchemyCrawlRepository(CrawlRepository):
             artifact_id=row.artifact_id,
             artifact_created=row.artifact_created,
             duplicate_reason=row.duplicate_reason,
+            final_url=row.final_url,
+            acquisition_details=tuple(
+                (key, value) for key, value in json.loads(row.acquisition_details_json)
+            ),
         )
 
 
@@ -310,7 +316,11 @@ class WebAcquisitionAdapter:
                 fetched.final_url,
                 reason=observation.reason.value if observation else result.status,
                 stage=observation.stage.value if observation else None,
-                details=observation_details(observation),
+                details=observation_details(observation)
+                + (
+                    ("fetch_status", fetched.status_code),
+                    ("content_type", fetched.content_type),
+                ),
                 discovered_links=links,
             )
         return AcquisitionOutcome(
@@ -321,7 +331,11 @@ class WebAcquisitionAdapter:
             result.document.document_id,
             reason=result.observation.reason.value if result.observation else "accepted",
             stage=result.observation.stage.value if result.observation else "storage",
-            details=observation_details(result.observation),
+            details=observation_details(result.observation)
+            + (
+                ("fetch_status", fetched.status_code),
+                ("content_type", fetched.content_type),
+            ),
             artifact_created=result.status == "stored",
             duplicate_reason=result.duplicate_reason,
         )
@@ -342,5 +356,6 @@ def observation_details(observation) -> tuple[tuple[str, object], ...]:
         ("language_status", observation.language_status),
         ("language_evidence_score", observation.language_evidence_score),
         ("language_evidence", observation.language_evidence),
+        ("title", observation.title),
     )
     return tuple((key, value) for key, value in values if value is not None and value != ())

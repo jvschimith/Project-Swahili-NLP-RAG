@@ -333,6 +333,8 @@ class CrawlOrchestrator:
         entry.artifact_id = outcome.artifact_id
         entry.artifact_created = outcome.artifact_created
         entry.duplicate_reason = outcome.duplicate_reason
+        entry.final_url = outcome.final_url
+        entry.acquisition_details = outcome.details
         if not outcome.acquired:
             entry.transition(FrontierState.FAILED, reason=outcome.reason or "acquisition_failed")
             job.record_failed()
@@ -403,9 +405,7 @@ class CrawlOrchestrator:
             child.transition(FrontierState.QUEUED)
             self.repository.add_entry(child)
 
-    def _skip_redirect_alias(
-        self, job: CrawlJob, processed: FrontierEntry, final_url: str
-    ) -> None:
+    def _skip_redirect_alias(self, job: CrawlJob, processed: FrontierEntry, final_url: str) -> None:
         try:
             final_identity = CrawlUrl.parse(final_url).value
         except ValueError:

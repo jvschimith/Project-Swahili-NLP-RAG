@@ -148,7 +148,11 @@ class TracedWebAcquisition:
                 fetched.final_url,
                 reason=observation.reason.value if observation else result.status,
                 stage=observation.stage.value if observation else None,
-                details=observation_details(observation),
+                details=observation_details(observation)
+                + (
+                    ("fetch_status", fetched.status_code),
+                    ("content_type", fetched.content_type),
+                ),
                 discovered_links=links,
             )
         return AcquisitionOutcome(
@@ -159,7 +163,11 @@ class TracedWebAcquisition:
             result.document.document_id,
             reason=result.observation.reason.value if result.observation else "accepted",
             stage=result.observation.stage.value if result.observation else "storage",
-            details=observation_details(result.observation),
+            details=observation_details(result.observation)
+            + (
+                ("fetch_status", fetched.status_code),
+                ("content_type", fetched.content_type),
+            ),
             artifact_created=result.status == "stored",
             duplicate_reason=result.duplicate_reason,
         )

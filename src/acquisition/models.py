@@ -56,6 +56,7 @@ class AcquisitionObservation:
     language_status: str | None = None
     language_evidence_score: float | None = None
     language_evidence: tuple[str, ...] = ()
+    title: str | None = None
 
 
 @dataclass(frozen=True)

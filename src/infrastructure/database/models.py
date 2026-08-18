@@ -213,3 +213,71 @@ class DBCrawlFrontier(Base):  # type: ignore[valid-type,misc]
     artifact_id: Mapped[str | None] = mapped_column(String(100))
     artifact_created: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     duplicate_reason: Mapped[str | None] = mapped_column(String(100))
+    final_url: Mapped[str | None] = mapped_column(String(2048))
+    acquisition_details_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+
+
+class DBCorpusPilot(Base):  # type: ignore[valid-type,misc]
+    """Application/research experiment metadata, separate from crawl aggregates."""
+
+    __tablename__ = "corpus_pilots"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    state: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    configuration_json: Mapped[str] = mapped_column(Text, nullable=False)
+    software_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    git_branch: Mapped[str | None] = mapped_column(String(255))
+    git_commit: Mapped[str | None] = mapped_column(String(40))
+    git_dirty: Mapped[bool | None] = mapped_column(Boolean)
+    python_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    corpus_path: Mapped[str] = mapped_column(Text, nullable=False)
+    database_path: Mapped[str] = mapped_column(Text, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    error: Mapped[str | None] = mapped_column(Text)
+
+
+class DBCorpusPilotSource(Base):  # type: ignore[valid-type,misc]
+    """One configured public source and its crawl-job association."""
+
+    __tablename__ = "corpus_pilot_sources"
+    __table_args__ = (
+        UniqueConstraint("pilot_id", "origin", name="uq_corpus_pilot_source_origin"),
+        Index("ix_corpus_pilot_source_position", "pilot_id", "position"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    pilot_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("corpus_pilots.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    origin: Mapped[str] = mapped_column(String(512), nullable=False)
+    seed_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    category: Mapped[str] = mapped_column(String(100), nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    expected_language_route: Mapped[str | None] = mapped_column(String(200))
+    robots_status: Mapped[str | None] = mapped_column(String(100))
+    static_suitability: Mapped[str | None] = mapped_column(String(100))
+    dynamic_dependence: Mapped[str | None] = mapped_column(String(100))
+    candidate_availability: Mapped[str | None] = mapped_column(String(100))
+    state: Mapped[str] = mapped_column(String(30), nullable=False, default="pending")
+    crawl_job_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("crawl_jobs.id", ondelete="SET NULL"), index=True
+    )
+
+
+class DBCorpusArtifactReview(Base):  # type: ignore[valid-type,misc]
+    """Mutable research evaluation referencing, never rewriting, an artifact."""
+
+    __tablename__ = "corpus_artifact_reviews"
+    __table_args__ = (UniqueConstraint("pilot_id", "artifact_id", name="uq_review_pilot_artifact"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    pilot_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("corpus_pilots.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    artifact_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    label: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    note: Mapped[str | None] = mapped_column(String(1000))
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

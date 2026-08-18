@@ -205,5 +205,6 @@ class AcquisitionPipeline:
             ),
             paragraph_count=inspection.paragraph_count,
             dynamic_signal=inspection.likely_dynamic,
+            title=inspection.title,
             **details,
         )
