@@ -81,7 +81,7 @@ These are operational and pilot review measures, not linguistic accuracy. `disco
 | BBC | 10 | 10 | 100% | 7,518 | none | 3 good |
 | HabariLEO | 10 | 9 | 90% | 2,189 | insufficient static content | 2 good; 1 wrong type |
 
-Vatican failures were six `uncertain_language`, one `likely_non_swahili`, and three `insufficient_static_content`. VOA had two uncertain-language and two insufficient-static failures. UN had three and HabariLEO one insufficient-static failure. No dynamic-browser-required rejection was recorded. Pre-acquisition skips included scope, depth, three UN competing-language routes, two Vatican competing-language routes, one unsupported Vatican resource, and two VOA duplicate aliases. Robots excluded no selected frontier entry after all seven origins passed preflight.
+Vatican failures were six `uncertain_language`, one `likely_non_swahili`, and three `insufficient_static_content`. VOA had two uncertain-language and two insufficient-static failures. UN had three and HabariLEO one insufficient-static failure. The total post-acquisition distribution was eight uncertain-language, one likely-non-Swahili, and nine insufficient-static-content rejections. No dynamic-browser-required rejection was recorded. The complete pre-acquisition distribution was 593 external-origin, 708 depth-limit, five competing-language-path, one unsupported-resource, and two duplicate skips. Robots excluded no selected frontier entry after all seven origins passed preflight.
 
 ## Deterministic manual review
 

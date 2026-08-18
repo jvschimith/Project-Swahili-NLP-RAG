@@ -18,6 +18,7 @@ def test_summary_source_frontier_and_rejections_are_separated(research_state):
     assert overview["rejected"] == 1
     assert overview["artifacts"] == 1
     assert sources[0]["main_rejection_reason"] == "insufficient_static_content"
+    assert sum(float(source["artifact_contribution"]) for source in sources) == 1.0
     assert frontier[0]["priority"] == "HIGH"
     assert rejection["pre_acquisition_skips"] == {"competing_language_path": 1}
     assert rejection["post_acquisition_rejections"] == {"insufficient_static_content": 1}

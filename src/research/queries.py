@@ -159,6 +159,11 @@ class CorpusResearchQueryService:
                     "termination_reason": self._termination(source.crawl_job_id),
                 }
             )
+        total_artifacts = sum(int(str(item["artifacts"])) for item in output)
+        for item in output:
+            item["artifact_contribution"] = (
+                int(str(item["artifacts"])) / total_artifacts if total_artifacts else 0.0
+            )
         return output
 
     def current_activity(self, pilot_id: str) -> dict[str, object] | None:
@@ -277,9 +282,7 @@ class CorpusResearchQueryService:
         path = self._document_path(artifact_id)
         if path is None:
             return None
-        payload = cast(
-            dict[str, object], json.loads(path.read_text(encoding="utf-8"))
-        )
+        payload = cast(dict[str, object], json.loads(path.read_text(encoding="utf-8")))
         entry = (
             self.session.query(DBCrawlFrontier)
             .filter_by(artifact_id=artifact_id)
@@ -292,12 +295,12 @@ class CorpusResearchQueryService:
         return payload
 
     def rejection_analysis(self, pilot_id: str) -> dict[str, dict[str, int]]:
-        rows = self.frontier(pilot_id, limit=200)
-        pre = Counter(str(row["skip_reason"]) for row in rows if row["skip_reason"])
+        rows = self._pilot_entries(pilot_id)
+        pre = Counter(str(row.skip_reason) for row in rows if row.skip_reason)
         post = Counter(
-            str(row["acquisition_reason"])
+            str(row.acquisition_reason)
             for row in rows
-            if row["state"] == "failed" and row["acquisition_reason"]
+            if row.state == "failed" and row.acquisition_reason
         )
         return {"pre_acquisition_skips": dict(pre), "post_acquisition_rejections": dict(post)}
 
@@ -373,6 +376,21 @@ class CorpusResearchQueryService:
         return cast(
             list[DBCrawlFrontier],
             self.session.query(DBCrawlFrontier).filter_by(job_id=job_id).all(),
+        )
+
+    def _pilot_entries(self, pilot_id: str) -> list[DBCrawlFrontier]:
+        job_ids = [
+            item[0]
+            for item in self.session.query(DBCorpusPilotSource.crawl_job_id)
+            .filter_by(pilot_id=pilot_id)
+            .filter(DBCorpusPilotSource.crawl_job_id.is_not(None))
+            .all()
+        ]
+        if not job_ids:
+            return []
+        return cast(
+            list[DBCrawlFrontier],
+            self.session.query(DBCrawlFrontier).filter(DBCrawlFrontier.job_id.in_(job_ids)).all(),
         )
 
     def _termination(self, job_id: str | None) -> str | None:
