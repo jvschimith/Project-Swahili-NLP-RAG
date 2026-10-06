@@ -1,6 +1,6 @@
 # Swahili Linguistic Intelligence
 
-A research-oriented Python toolkit and FastAPI application for structured Swahili lexical and morphological analysis. The repository focuses on computational morphology, Bantu noun classes, lexical knowledge, corpus-oriented ingestion, and reproducible linguistic data workflows.
+A research-oriented linguistic knowledge infrastructure for Swahili. It combines structured lexical and morphological analysis, a FastAPI application, responsible public-web corpus acquisition, reproducible experiment tracking, and a local research console.
 
 This is an alpha research system. It is not production-ready, and it is not currently a retrieval-augmented generation (RAG) implementation: there is no evidence-to-generation pipeline or LLM in the runtime path. The historical package/repository name is retained only where compatibility may require it.
 
@@ -30,7 +30,9 @@ Implemented:
 - bounded HTTP(S) fetching with redirect validation and rejection of non-public network targets;
 - static-first corpus acquisition with structured extraction, Swahili validation,
   content hashing, provenance, JSONL manifests, and exact deduplication;
-- a Streamlit local research/demo dashboard.
+- an origin-scoped, robots-aware, rate-limited crawl frontier with SQLite checkpoints;
+- a reproducible seven-source public Swahili corpus pilot and deterministic review workflow;
+- a read-oriented Streamlit corpus research console.
 
 Experimental:
 
@@ -92,9 +94,23 @@ resume from SQLite checkpoints without blindly reacquiring completed pages. Corp
 artifacts remain owned by Web Corpus Acquisition v1. See
 [docs/RESPONSIBLE_CRAWL_ORCHESTRATION.md](docs/RESPONSIBLE_CRAWL_ORCHESTRATION.md).
 
+## Current corpus pilot
+
+The latest bounded experiment ran 70 acquisition attempts across seven public Swahili
+publishers. It produced 52 immutable artifacts from 1,937 discovered URLs, with 204,627
+normalized characters and a 74.3% artifact yield per attempt. These figures describe
+operational yield, not linguistic accuracy or corpus representativeness. A deterministic,
+weakness-enriched manual sample found 10 of 21 artifacts good or acceptable and exposed
+short pages, media placeholders, boilerplate, and wrong content types as the next quality
+targets.
+
+See [docs/PUBLIC_SWAHILI_CORPUS_PILOT.md](docs/PUBLIC_SWAHILI_CORPUS_PILOT.md) for the
+method, source-level results, rejection accounting, provenance, and limitations.
+
 ## Installation
 
-Python 3.13.5 is the interpreter validated in the current engineering session. Metadata permits Python 3.10+, but other versions still require CI verification.
+Python 3.12.3 is the interpreter validated in the current engineering session. Project
+metadata permits Python 3.10+; other supported versions still require CI verification.
 
 ```bash
 python3 -m venv .venv
@@ -116,11 +132,25 @@ python scripts/seed_release1_alpha.py
 uvicorn src.web.api:app --reload
 ```
 
-The interactive API documentation is at `http://localhost:8000/docs`. To run the optional dashboard:
+The interactive API documentation is at `http://localhost:8000/docs`. To run the optional
+legacy application dashboard:
 
 ```bash
 streamlit run streamlit_app.py
 ```
+
+The corpus pilot is a separate, bounded research workflow. It performs live public-web
+requests and must be run only when that network activity is intended:
+
+```bash
+python -m src.research.run_corpus_pilot
+CORPUS_PILOT_DB=data/corpus-pilot/pilot.sqlite \
+CORPUS_PILOT_ROOT=data/corpus-pilot/corpus \
+streamlit run src/research_ui/corpus_pilot.py --server.address 127.0.0.1
+```
+
+For a presentation-ready sequence that separates deterministic local behavior from live
+network behavior, see [ALPHA_DEMO.md](ALPHA_DEMO.md).
 
 ## API
 
@@ -137,7 +167,14 @@ flake8 src tests
 mypy src
 ```
 
-The initial measured baseline on 2026-08-12 was 106 collected tests, 10 failures in the focused domain/application subset, and 35% total branch-aware coverage. The active session is correcting these results; see [docs/TECHNICAL_AUDIT.md](docs/TECHNICAL_AUDIT.md) and [docs/SESSION_REPORT.md](docs/SESSION_REPORT.md) for the final exact figures. No >90% coverage claim is made.
+The initial measured baseline on 2026-08-12 was 106 collected tests, 10 failures in the
+focused domain/application subset, and 35% total branch-aware coverage. On 2026-10-06 the
+full local suite collected 214 tests: 213 passed, one optional integration test was skipped,
+and branch-aware coverage was 73%. The suite includes deterministic coverage for
+acquisition, crawl policy and persistence, research queries, the corpus pilot, and both
+demonstration interfaces. Historical measurements are recorded in
+[docs/TECHNICAL_AUDIT.md](docs/TECHNICAL_AUDIT.md) and
+[docs/SESSION_REPORT.md](docs/SESSION_REPORT.md).
 
 ## Data provenance
 
@@ -149,6 +186,7 @@ Committed data is limited to small deterministic seed fixtures, migration materi
 - Noun lemmas are not normalized from plural to singular.
 - Sentiment is a small lexicon baseline, not a context-sensitive model.
 - Static paragraph extraction can include or omit boilerplate and does not prove that content is Swahili.
+- Corpus acceptance can still admit short pages, media placeholders, repeated boilerplate, and non-article publisher pages.
 - URL safety checks reduce obvious SSRF exposure but do not replace deployment-level egress controls and DNS pinning.
 - Several legacy persistence tables remain term-centric.
 - Batch jobs are in-memory and are not durable across process restarts.
