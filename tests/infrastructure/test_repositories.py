@@ -1,7 +1,7 @@
 """SQLite-backed repository and transaction regression tests."""
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 
 from src.domain.entities import NewsArticle, SwahiliTerm
@@ -11,6 +11,7 @@ from src.domain.value_objects import (
     SentimentScore,
     WordType,
 )
+from src.infrastructure.database.connection import _enable_sqlite_foreign_keys
 from src.infrastructure.database.models import Base
 from src.infrastructure.repositories.news_repository import NewsRepository
 from src.infrastructure.repositories.term_repository import TermRepository
@@ -19,10 +20,16 @@ from src.infrastructure.repositories.term_repository import TermRepository
 @pytest.fixture
 def session_factory(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'repositories.sqlite'}")
+    event.listen(engine, "connect", _enable_sqlite_foreign_keys)
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, autoflush=False)
     yield factory
     engine.dispose()
+
+
+def test_sqlite_foreign_keys_are_enabled(session_factory):
+    with session_factory().connection() as connection:
+        assert connection.execute(text("PRAGMA foreign_keys")).scalar_one() == 1
 
 
 def test_term_round_trip_and_duplicate_rejection(session_factory):

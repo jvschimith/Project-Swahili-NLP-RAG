@@ -12,11 +12,13 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 Base = declarative_base()
 
@@ -37,15 +39,11 @@ class DBTerm(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
-    pos_records = relationship(
-        "DBPOS", back_populates="term", cascade="all, delete-orphan"
-    )
+    pos_records = relationship("DBPOS", back_populates="term", cascade="all, delete-orphan")
     sentiment_records = relationship(
         "DBSentiment", back_populates="term", cascade="all, delete-orphan"
     )
-    entity_records = relationship(
-        "DBEntity", back_populates="term", cascade="all, delete-orphan"
-    )
+    entity_records = relationship("DBEntity", back_populates="term", cascade="all, delete-orphan")
     dictionary_entry = relationship(
         "DBDictionary",
         back_populates="term",
@@ -158,3 +156,128 @@ class DBSchemaVersion(Base):
     version = Column(String(20), nullable=False, unique=True)
     applied_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     description = Column(Text)
+
+
+class DBCrawlJob(Base):  # type: ignore[valid-type,misc]
+    """Persistence model for the crawl-job aggregate root."""
+
+    __tablename__ = "crawl_jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    seeds_json: Mapped[str] = mapped_column(Text, nullable=False)
+    allowed_origins_json: Mapped[str] = mapped_column(Text, nullable=False)
+    max_pages: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_depth: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_failures: Mapped[int] = mapped_column(Integer, nullable=False)
+    per_origin_pages: Mapped[int] = mapped_column(Integer, nullable=False)
+    min_delay_seconds: Mapped[float] = mapped_column(Float, nullable=False)
+    user_agent: Mapped[str] = mapped_column(String(200), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    termination_reason: Mapped[str | None] = mapped_column(String(50))
+    pages_attempted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pages_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pages_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pages_skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class DBCrawlFrontier(Base):  # type: ignore[valid-type,misc]
+    """Persistence model for a URL entity within one crawl frontier."""
+
+    __tablename__ = "crawl_frontier"
+    __table_args__ = (
+        UniqueConstraint("job_id", "canonical_url", name="uq_crawl_frontier_job_url"),
+        Index("ix_crawl_frontier_next", "job_id", "state", "depth", "priority", "id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("crawl_jobs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    canonical_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    origin: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
+    parent_url: Mapped[str | None] = mapped_column(String(2048))
+    depth: Mapped[int] = mapped_column(Integer, nullable=False)
+    state: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    discovered_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    skip_reason: Mapped[str | None] = mapped_column(String(100))
+    error: Mapped[str | None] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
+    resource_kind: Mapped[str] = mapped_column(String(40), nullable=False, default="unknown")
+    candidate_evidence_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    acquisition_stage: Mapped[str | None] = mapped_column(String(50))
+    acquisition_reason: Mapped[str | None] = mapped_column(String(100))
+    artifact_id: Mapped[str | None] = mapped_column(String(100))
+    artifact_created: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    duplicate_reason: Mapped[str | None] = mapped_column(String(100))
+    final_url: Mapped[str | None] = mapped_column(String(2048))
+    acquisition_details_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+
+
+class DBCorpusPilot(Base):  # type: ignore[valid-type,misc]
+    """Application/research experiment metadata, separate from crawl aggregates."""
+
+    __tablename__ = "corpus_pilots"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    state: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    configuration_json: Mapped[str] = mapped_column(Text, nullable=False)
+    software_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    git_branch: Mapped[str | None] = mapped_column(String(255))
+    git_commit: Mapped[str | None] = mapped_column(String(40))
+    git_dirty: Mapped[bool | None] = mapped_column(Boolean)
+    python_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    corpus_path: Mapped[str] = mapped_column(Text, nullable=False)
+    database_path: Mapped[str] = mapped_column(Text, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    error: Mapped[str | None] = mapped_column(Text)
+
+
+class DBCorpusPilotSource(Base):  # type: ignore[valid-type,misc]
+    """One configured public source and its crawl-job association."""
+
+    __tablename__ = "corpus_pilot_sources"
+    __table_args__ = (
+        UniqueConstraint("pilot_id", "origin", name="uq_corpus_pilot_source_origin"),
+        Index("ix_corpus_pilot_source_position", "pilot_id", "position"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    pilot_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("corpus_pilots.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    origin: Mapped[str] = mapped_column(String(512), nullable=False)
+    seed_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    category: Mapped[str] = mapped_column(String(100), nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    expected_language_route: Mapped[str | None] = mapped_column(String(200))
+    robots_status: Mapped[str | None] = mapped_column(String(100))
+    static_suitability: Mapped[str | None] = mapped_column(String(100))
+    dynamic_dependence: Mapped[str | None] = mapped_column(String(100))
+    candidate_availability: Mapped[str | None] = mapped_column(String(100))
+    state: Mapped[str] = mapped_column(String(30), nullable=False, default="pending")
+    crawl_job_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("crawl_jobs.id", ondelete="SET NULL"), index=True
+    )
+
+
+class DBCorpusArtifactReview(Base):  # type: ignore[valid-type,misc]
+    """Mutable research evaluation referencing, never rewriting, an artifact."""
+
+    __tablename__ = "corpus_artifact_reviews"
+    __table_args__ = (UniqueConstraint("pilot_id", "artifact_id", name="uq_review_pilot_artifact"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    pilot_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("corpus_pilots.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    artifact_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    label: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    note: Mapped[str | None] = mapped_column(String(1000))
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

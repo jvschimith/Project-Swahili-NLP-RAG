@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 from typing import ClassVar
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 
 @dataclass(frozen=True)
@@ -51,10 +51,9 @@ class PageInspector:
     def inspect_html(cls, url: str, html: str) -> PageInspectionResult:
         soup = BeautifulSoup(html, "html.parser")
         canonical = soup.find("link", rel=lambda value: value and "canonical" in value)
-        canonical_url = (
-            urljoin(url, canonical.get("href")) if canonical and canonical.get("href") else None
-        )
-        html_language = soup.html.get("lang") if soup.html else None
+        canonical_href = cls._attribute(canonical, "href")
+        canonical_url = urljoin(url, canonical_href) if canonical_href else None
+        html_language = cls._attribute(soup.html, "lang")
         title = soup.title.get_text(" ", strip=True) if soup.title else None
 
         json_ld_types: set[str] = set()
@@ -67,25 +66,30 @@ class PageInspector:
 
         open_graph = {}
         for meta in soup.find_all("meta"):
-            prop = meta.get("property") or meta.get("name")
-            if prop and prop.startswith("og:") and meta.get("content"):
-                open_graph[prop] = meta["content"].strip()
+            prop = cls._attribute(meta, "property") or cls._attribute(meta, "name")
+            content = cls._attribute(meta, "content")
+            if prop and prop.startswith("og:") and content:
+                open_graph[prop] = content.strip()
 
         article = soup.find("article")
         main = soup.find("main")
         paragraphs = soup.find_all("p")
         article_paragraphs = article.find_all("p") if article else []
         links = soup.find_all("a", href=True)
-        feeds = [
-            urljoin(url, link["href"])
-            for link in soup.find_all("link", href=True)
-            if (link.get("type") or "").lower() in {"application/rss+xml", "application/atom+xml"}
-        ]
-        sitemap_urls = [
-            urljoin(url, link["href"])
-            for link in soup.find_all("a", href=True)
-            if "sitemap" in link["href"].lower()
-        ]
+        feeds: list[str] = []
+        for link in soup.find_all("link", href=True):
+            href = cls._attribute(link, "href")
+            content_type = cls._attribute(link, "type")
+            if href and content_type and content_type.lower() in {
+                "application/rss+xml",
+                "application/atom+xml",
+            }:
+                feeds.append(urljoin(url, href))
+        sitemap_urls: list[str] = []
+        for link in soup.find_all("a", href=True):
+            href = cls._attribute(link, "href")
+            if href and "sitemap" in href.lower():
+                sitemap_urls.append(urljoin(url, href))
         scripts = soup.find_all("script")
         body_text = soup.get_text(" ", strip=True)
         likely_dynamic = len(scripts) >= 12 and len(body_text) < 500 and len(paragraphs) < 3
@@ -116,6 +120,13 @@ class PageInspector:
             recommended_strategy=strategy,
             explanation=explanation,
         )
+
+    @staticmethod
+    def _attribute(element: object, name: str) -> str | None:
+        if not isinstance(element, Tag):
+            return None
+        value = element.get(name)
+        return value if isinstance(value, str) else None
 
     @classmethod
     def _collect_json_ld_types(cls, value, output: set[str]) -> None:
@@ -176,12 +187,19 @@ def main() -> int:
 
     from src.application.services.url_analyzer import URLNewsAnalyzer
 
-    html = URLNewsAnalyzer().fetch_url(args.url)
-    if html is None:
+    fetched = URLNewsAnalyzer().fetch_result(args.url)
+    if fetched is None:
         parser.error("page could not be fetched under the public URL policy")
     print(
         json.dumps(
-            PageInspector.inspect_html(args.url, html).to_dict(),
+            {
+                "requested_url": fetched.requested_url,
+                "final_url": fetched.final_url,
+                "status_code": fetched.status_code,
+                "content_type": fetched.content_type,
+                "retrieved_at": fetched.retrieved_at.isoformat(),
+                "inspection": PageInspector.inspect_html(fetched.final_url, fetched.html).to_dict(),
+            },
             ensure_ascii=False,
             indent=2,
         )

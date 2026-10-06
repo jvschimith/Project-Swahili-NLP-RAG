@@ -8,8 +8,10 @@ from collections.abc import Generator
 from contextlib import contextmanager
 
 from loguru import logger
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine.interfaces import DBAPIConnection
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import ConnectionPoolEntry
 
 from ..config import settings
 from .models import Base
@@ -27,6 +29,19 @@ engine = create_engine(
         else {}
     ),
 )
+
+
+def _enable_sqlite_foreign_keys(
+    dbapi_connection: DBAPIConnection, _connection_record: ConnectionPoolEntry
+) -> None:
+    """Enable SQLite foreign-key enforcement for every pooled connection."""
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+
+if engine.url.get_backend_name() == "sqlite":
+    event.listen(engine, "connect", _enable_sqlite_foreign_keys)
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

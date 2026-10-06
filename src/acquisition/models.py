@@ -22,6 +22,43 @@ class LanguageStatus(str, Enum):
     UNCERTAIN = "uncertain"
 
 
+class AcquisitionStage(str, Enum):
+    STATIC_EXTRACTION = "static_extraction"
+    LANGUAGE_VALIDATION = "language_validation"
+    DEDUPLICATION = "deduplication"
+    STORAGE = "storage"
+
+
+class AcquisitionReason(str, Enum):
+    ACCEPTED = "accepted"
+    INSUFFICIENT_STATIC_CONTENT = "insufficient_static_content"
+    DYNAMIC_BROWSER_REQUIRED = "dynamic_browser_required"
+    LIKELY_NON_SWAHILI = "likely_non_swahili"
+    UNCERTAIN_LANGUAGE = "uncertain_language"
+    DUPLICATE_CANONICAL_URL = "duplicate_canonical_url"
+    DUPLICATE_CONTENT = "duplicate_content"
+
+
+@dataclass(frozen=True)
+class AcquisitionObservation:
+    """Typed evidence explaining the terminal Web Acquisition decision."""
+
+    stage: AcquisitionStage
+    reason: AcquisitionReason
+    extraction_strategy: str | None = None
+    html_language: str | None = None
+    article_container: bool | None = None
+    main_container: bool | None = None
+    json_ld_article: bool | None = None
+    paragraph_count: int | None = None
+    extracted_character_count: int | None = None
+    dynamic_signal: bool | None = None
+    language_status: str | None = None
+    language_evidence_score: float | None = None
+    language_evidence: tuple[str, ...] = ()
+    title: str | None = None
+
+
 @dataclass(frozen=True)
 class LanguageValidationResult:
     language: str | None
@@ -72,3 +109,4 @@ class IngestionResult:
     document: WebDocument | None
     duplicate_reason: str | None = None
     storage_path: str | None = None
+    observation: AcquisitionObservation | None = None

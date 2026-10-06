@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from urllib.parse import urljoin, urlsplit
 from xml.etree import ElementTree
 
+from bs4 import BeautifulSoup
+
+from .content import canonicalize_url
+
 MAX_DISCOVERY_BYTES = 2 * 1024 * 1024
 
 
@@ -20,6 +24,46 @@ class DiscoveredURL:
 
 def _allowed(url: str, allowed_domains: set[str] | None) -> bool:
     return allowed_domains is None or (urlsplit(url).hostname or "").lower() in allowed_domains
+
+
+def discover_page_urls(
+    seed_url: str,
+    html: str,
+    *,
+    max_urls: int,
+    allowed_domains: set[str],
+) -> list[DiscoveredURL]:
+    """Find bounded HTTP(S) link candidates from one static seed page.
+
+    This function performs no recursive fetching. Requiring an explicit domain
+    allowlist prevents a seed page from silently expanding crawl scope.
+    """
+    if max_urls < 1:
+        raise ValueError("max_urls must be positive")
+    normalized_domains = {domain.lower().rstrip(".") for domain in allowed_domains if domain}
+    if not normalized_domains:
+        raise ValueError("allowed_domains must contain at least one domain")
+
+    results: list[DiscoveredURL] = []
+    seen: set[str] = set()
+    soup = BeautifulSoup(html, "html.parser")
+    for link in soup.find_all("a", href=True):
+        href = link.get("href")
+        if not isinstance(href, str):
+            continue
+        target = urljoin(seed_url, href)
+        parsed = urlsplit(target)
+        if parsed.scheme.lower() not in {"http", "https"} or parsed.username or parsed.password:
+            continue
+        target = canonicalize_url(target)
+        if target in seen or not _allowed(target, normalized_domains):
+            continue
+        seen.add(target)
+        title = link.get_text(" ", strip=True) or None
+        results.append(DiscoveredURL(target, seed_url, "page_link", title))
+        if len(results) >= max_urls:
+            break
+    return results
 
 
 def _parse_xml(xml: str) -> ElementTree.Element:

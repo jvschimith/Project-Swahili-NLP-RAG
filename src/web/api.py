@@ -1,7 +1,7 @@
 """
 Web Layer - REST API
 
-FastAPI REST API for Swahili NLP RAG.
+FastAPI REST API for Swahili Linguistic Intelligence.
 
 Endpoints:
 - GET /terms/{term} - Lookup term
